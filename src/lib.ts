@@ -561,3 +561,44 @@ export async function buildStructureOfflineTransaction(
 
   return tx;
 }
+
+// ─── Rename Transaction ───────────────────────────────────────────────────────
+
+export function buildRenameTransaction(
+  structure: PlayerStructure,
+  characterId: string,
+  newName: string,
+): Transaction {
+  const tx = new Transaction();
+
+  const [cap, receipt] = tx.moveCall({
+    target: `${WORLD_PKG}::character::borrow_owner_cap`,
+    typeArguments: [structure.typeFull],
+    arguments: [tx.object(characterId), tx.object(structure.ownerCapId)],
+  });
+
+  if (structure.kind === "NetworkNode") {
+    tx.moveCall({
+      target: `${WORLD_PKG}::network_node::update_metadata_name`,
+      arguments: [tx.object(structure.objectId), cap, tx.pure.string(newName)],
+    });
+  } else if (structure.kind === "Gate") {
+    tx.moveCall({
+      target: `${WORLD_PKG}::gate::update_metadata_name`,
+      arguments: [tx.object(structure.objectId), cap, tx.pure.string(newName)],
+    });
+  } else if (structure.kind === "Assembly") {
+    tx.moveCall({
+      target: `${WORLD_PKG}::assembly::update_metadata_name`,
+      arguments: [tx.object(structure.objectId), cap, tx.pure.string(newName)],
+    });
+  }
+
+  tx.moveCall({
+    target: `${WORLD_PKG}::character::return_owner_cap`,
+    typeArguments: [structure.typeFull],
+    arguments: [tx.object(characterId), cap, receipt],
+  });
+
+  return tx;
+}

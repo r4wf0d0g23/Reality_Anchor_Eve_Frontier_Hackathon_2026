@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useCurrentAccount, useDAppKit } from "@mysten/dapp-kit-react";
 import { CurrentAccountSigner } from "@mysten/dapp-kit-core";
@@ -6,6 +6,7 @@ import {
   fetchPlayerStructures,
   buildStructureOnlineTransaction,
   buildStructureOfflineTransaction,
+  buildRenameTransaction,
   type LocationGroup,
   type PlayerStructure,
 } from "../lib";
@@ -56,6 +57,13 @@ function StructureRow({
   const dAppKit = useDAppKit();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState(false);
+  const [nameInput, setNameInput] = useState(structure.displayName === structure.label ? "" : structure.displayName);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (renaming) inputRef.current?.focus();
+  }, [renaming]);
 
   const handleOnline = async () => {
     setBusy(true); setErr(null);
@@ -81,8 +89,24 @@ function StructureRow({
     } finally { setBusy(false); }
   };
 
+  const handleRename = async () => {
+    const name = nameInput.trim();
+    if (!name) { setRenaming(false); return; }
+    setBusy(true); setErr(null);
+    try {
+      const tx = buildRenameTransaction(structure, characterId, name);
+      const signer = new CurrentAccountSigner(dAppKit);
+      const result = await signer.signAndExecuteTransaction({ transaction: tx });
+      setRenaming(false);
+      onTxSuccess?.(readDigest(result));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally { setBusy(false); }
+  };
+
   const canOnline = !!account && !busy && !structure.isOnline;
   const canOffline = !!account && !busy && structure.isOnline;
+  const canRename = !!account && !busy && (structure.kind === "NetworkNode" || structure.kind === "Gate" || structure.kind === "Assembly");
 
   return (
     <div style={{
@@ -94,11 +118,62 @@ function StructureRow({
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
         <span style={{ fontSize: "18px" }}>{KIND_ICON[structure.kind] ?? "⚙️"}</span>
-        <span style={{ color: "#ffa032", fontWeight: 600, minWidth: "110px" }}>{structure.displayName}</span>
+
+        {/* Name / inline rename */}
+        {renaming ? (
+          <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+            <input
+              ref={inputRef}
+              value={nameInput}
+              onChange={e => setNameInput(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") setRenaming(false); }}
+              placeholder={structure.label}
+              style={{
+                background: "rgba(255,160,50,0.08)",
+                border: "1px solid rgba(255,160,50,0.4)",
+                borderRadius: "4px",
+                color: "#ffa032",
+                fontSize: "13px",
+                fontWeight: 600,
+                padding: "3px 8px",
+                outline: "none",
+                width: "160px",
+              }}
+            />
+            <button className="accent-button" onClick={handleRename} disabled={busy} style={{ padding: "3px 10px", fontSize: "12px" }}>
+              {busy ? "…" : "Save"}
+            </button>
+            <button className="ghost-button" onClick={() => setRenaming(false)} style={{ padding: "3px 10px", fontSize: "12px" }}>
+              ✕
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ color: "#ffa032", fontWeight: 600, minWidth: "110px" }}>{structure.displayName}</span>
+            {canRename && (
+              <button
+                onClick={() => setRenaming(true)}
+                title="Rename"
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "#555",
+                  fontSize: "13px",
+                  padding: "0 2px",
+                  lineHeight: 1,
+                }}
+              >
+                ✎
+              </button>
+            )}
+          </div>
+        )}
+
         <StatusBadge isOnline={structure.isOnline} />
 
         {structure.kind === "NetworkNode" && structure.fuelLevelPct !== undefined && (
-          <span style={{ fontSize: "12px", color: "#888", marginLeft: "8px" }}>
+          <span style={{ fontSize: "12px", color: "#888", marginLeft: "4px" }}>
             ⛽ {structure.fuelLevelPct.toFixed(1)}% · ⏱ {structure.runtimeHoursRemaining?.toFixed(0)}h
           </span>
         )}
