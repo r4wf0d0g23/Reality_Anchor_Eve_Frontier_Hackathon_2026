@@ -1,6 +1,10 @@
 export const WORLD_PKG = "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75";
-// v4 package — CradleCoin (CRDL) + CRDL-backed TribeDex
-export const CRADLEOS_PKG = "0xee8cd44d4373a8fbb644edbd96281f0e25eacaec6209408c00a2b7c76a179546";
+// v6 package — CharacterRegistry + proof-based vault ownership
+export const CRADLEOS_PKG = "0x87c43e9a86ae971546b4a9eab63e3f496ac9d7de842f5cc3f3b57ea5f332c660";
+// Original v4 package ID — Sui event indexer normalizes upgraded-package events back to
+// the original package ID. Use this for ALL suix_queryEvents calls (CoinLaunched, etc.)
+export const CRADLEOS_EVENTS_PKG = "0xee8cd44d4373a8fbb644edbd96281f0e25eacaec6209408c00a2b7c76a179546";
+// CradleMintController and CoinMetadata are shared objects from v4 init — same IDs across upgrades
 export const CRADLE_MINT_CONTROLLER = "0x50a5c166ee46cd9a48b49649b6ac0b6cb01090470c96317bd9d69d7e50e19a50";
 export const CRDL_COIN_TYPE = `${CRADLEOS_PKG}::cradle_coin::CRADLE_COIN`;
 export const RAW_CHARACTER_ID = "0x5ef314c39748d5027fe4aef711f92497a4ea9618886f107916f2df0f16034c1c";
@@ -10,6 +14,11 @@ export const FUEL_CONFIG = "0x0f354c803af170ac0d1ac9068625c6321996b3013dc67bdaf1
 export const ENERGY_CONFIG = "0x9285364e8104c04380d9cc4a001bbdfc81a554aad441c2909c2d3bd52a0c9c62";
 export const CLOCK = "0x6";
 export const SUI_TESTNET_RPC = "https://fullnode.testnet.sui.io:443";
+
+// Well-known tribes that don't have CradleOS vaults but still need policy coverage
+export const WELL_KNOWN_TRIBES: Array<{ tribeId: number; coinSymbol: string; label: string }> = [
+  { tribeId: 1000167, coinSymbol: "—", label: "Default Spawn Tribe" },
+];
 export const WORLD_API = "https://world-api-utopia.uat.pub.evefrontier.com";
 
 export const NETWORK_NODE_TYPE = `${WORLD_PKG}::network_node::NetworkNode`;

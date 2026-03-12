@@ -88,6 +88,11 @@ module cradleos::tribe_vault {
         amount: u64,
     }
 
+    public struct FounderTransferred has copy, drop {
+        vault_id: ID,
+        new_founder: address,
+    }
+
     // ── Vault lifecycle ───────────────────────────────────────────────────────
 
     entry fun create_vault(
@@ -275,4 +280,43 @@ module cradleos::tribe_vault {
     public fun coin_symbol(vault: &TribeVault): String { vault.coin_symbol }
     public fun total_supply(vault: &TribeVault): u64   { vault.total_supply }
     public fun infra_credits(vault: &TribeVault): u64  { vault.infra_credits }
+
+    // ── Package-internal: used by character_registry ──────────────────────────
+
+    /// Transfer vault founder to a new address.
+    /// Called atomically by character_registry::challenge_and_take_vault.
+    public(package) fun set_founder(vault: &mut TribeVault, new_founder: address) {
+        vault.founder = new_founder;
+        event::emit(FounderTransferred {
+            vault_id: object::uid_to_inner(&vault.id),
+            new_founder,
+        });
+    }
+
+    /// Create a vault without re-checking caller auth — auth is enforced by
+    /// character_registry::create_vault_with_registry before calling this.
+    public(package) fun create_vault_internal(
+        founder: address,
+        tribe_id: u32,
+        coin_name: vector<u8>,
+        coin_symbol: vector<u8>,
+        ctx: &mut TxContext,
+    ) {
+        let vault_uid = object::new(ctx);
+        let vault_id  = object::uid_to_inner(&vault_uid);
+        let name   = string::utf8(coin_name);
+        let symbol = string::utf8(coin_symbol);
+        event::emit(CoinLaunched { vault_id, tribe_id, founder, coin_name: name, coin_symbol: symbol });
+        transfer::share_object(TribeVault {
+            id: vault_uid,
+            tribe_id,
+            founder,
+            coin_name: name,
+            coin_symbol: symbol,
+            total_supply: 0,
+            balances: table::new(ctx),
+            registered_infra: table::new(ctx),
+            infra_credits: 0,
+        });
+    }
 }

@@ -3,8 +3,10 @@ import { abbreviateAddress, useConnection } from "@evefrontier/dapp-kit";
 import { useCurrentAccount, useWallets, useDAppKit } from "@mysten/dapp-kit-react";
 import { StructurePanel } from "./components/StructurePanel";
 import { TribeVaultPanel } from "./components/TribeVaultPanel";
+import { TurretPolicyPanel } from "./components/TurretPolicyPanel";
+import { RegistryPanel } from "./components/RegistryPanel";
 
-type Tab = "structures" | "tribe";
+type Tab = "structures" | "tribe" | "defense" | "registry";
 
 function App() {
   const { handleDisconnect, hasEveVault, isConnected } = useConnection();
@@ -86,7 +88,7 @@ function App() {
 
       {/* Main nav tabs */}
       <div style={{ display: "flex", gap: "4px", padding: "0 0 16px 0" }}>
-        {(["structures", "tribe"] as Tab[]).map(tab => (
+        {(["structures", "tribe", "defense", "registry"] as Tab[]).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -104,7 +106,7 @@ function App() {
               transition: "all 0.15s",
             }}
           >
-            {tab === "structures" ? "🏗 Structures" : "⚓ Tribe Coin"}
+            {tab === "structures" ? "🏗 Structures" : tab === "tribe" ? "⚓ Tribe Coin" : tab === "defense" ? "🛡 Defense" : "📋 Registry"}
           </button>
         ))}
       </div>
@@ -112,6 +114,8 @@ function App() {
       <div className="dashboard-grid">
         {activeTab === "structures" && <StructurePanel    onTxSuccess={setLastDigest} />}
         {activeTab === "tribe"      && <TribeVaultPanel   onTxSuccess={setLastDigest} />}
+        {activeTab === "defense"    && <TurretPolicyPanel />}
+        {activeTab === "registry"   && <RegistryPanel />}
       </div>
     </main>
   );

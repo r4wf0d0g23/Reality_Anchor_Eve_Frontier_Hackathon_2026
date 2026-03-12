@@ -14,6 +14,7 @@ import {
   fetchCharacterTribeId,
   fetchTribeVault,
   fetchMemberBalance,
+  fetchRegisteredInfraIds,
   fetchCoinIssuedEvents,
   buildLaunchCoinTransaction,
   buildIssueCoinTransaction,
@@ -24,11 +25,15 @@ import {
   fetchTribeInfo,
   getCachedVaultId,
   setCachedVaultId,
+  fetchTribeClaim,
+  buildRegisterClaimTransaction,
+  buildCreateVaultWithRegistryTransaction,
+  findCharacterForWallet,
   type TribeVaultState,
   type CoinIssuedEvent,
   type PlayerStructure,
 } from "../lib";
-import { SUI_TESTNET_RPC, CRADLEOS_PKG } from "../constants";
+import { SUI_TESTNET_RPC, CRADLEOS_EVENTS_PKG } from "../constants";
 import { TribeDexPanel } from "./TribeDexPanel";
 
 // ── Error boundary ────────────────────────────────────────────────────────────
@@ -94,8 +99,8 @@ async function discoverVaultIdFromChain(walletAddress: string): Promise<string |
         jsonrpc: "2.0", id: 1,
         method: "suix_queryEvents",
         params: [
-          { MoveEventType: `${CRADLEOS_PKG}::tribe_vault::CoinLaunched` },
-          null, 50, false,
+          { MoveEventType: `${CRADLEOS_EVENTS_PKG}::tribe_vault::CoinLaunched` },
+          null, 50, true,  // descending=true → newest vault first
         ],
       }),
     });
@@ -180,10 +185,15 @@ function EventRow({ ev }: { ev: CoinIssuedEvent }) {
 function LaunchCoinForm({ onSuccess }: { onSuccess: () => void }) {
   const account = useCurrentAccount();
   const dAppKit = useDAppKit();
+  const queryClient = useQueryClient();
   const [coinName, setCoinName] = useState("");
   const [coinSymbol, setCoinSymbol] = useState("");
   const [busy, setBusy] = useState(false);
+  const [claimBusy, setClaimBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // After tx is sent: show a paste-vault-ID field in case auto-detect fails
+  const [txSent, setTxSent] = useState(false);
+  const [pasteId, setPasteId] = useState("");
 
   const { data: tribeId, isLoading: tribeLoading } = useQuery<number | null>({
     queryKey: ["characterTribeId", account?.address],
@@ -191,11 +201,47 @@ function LaunchCoinForm({ onSuccess }: { onSuccess: () => void }) {
     enabled: !!account?.address,
   });
 
+  const { data: characterId } = useQuery<string | null>({
+    queryKey: ["characterId", account?.address],
+    queryFn: async () => {
+      if (!account) return null;
+      const info = await findCharacterForWallet(account.address);
+      return info?.characterId ?? null;
+    },
+    enabled: !!account?.address,
+  });
+
+  const { data: claim, isLoading: claimLoading } = useQuery({
+    queryKey: ["tribeClaim", tribeId],
+    queryFn: () => tribeId != null ? fetchTribeClaim(tribeId) : Promise.resolve(null),
+    enabled: tribeId != null,
+    staleTime: 12_000,
+  });
+
+  const myClaimActive = claim?.claimer.toLowerCase() === account?.address.toLowerCase();
+  const claimConflict = !!claim && !myClaimActive;
+
+  const handleRegisterClaim = async () => {
+    if (!account || !tribeId || !characterId) return;
+    setClaimBusy(true); setErr(null);
+    try {
+      const tx = buildRegisterClaimTransaction(tribeId, characterId);
+      const signer = new CurrentAccountSigner(dAppKit);
+      await signer.signAndExecuteTransaction({ transaction: tx });
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: ["tribeClaim", tribeId] }), 2500);
+    } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
+    finally { setClaimBusy(false); }
+  };
+
   const handleLaunch = async () => {
     if (!account || !tribeId || !coinName.trim() || !coinSymbol.trim()) return;
     setBusy(true); setErr(null);
     try {
-      const tx = buildLaunchCoinTransaction(tribeId, coinName.trim(), coinSymbol.trim().toUpperCase());
+      // Use registry-gated vault creation if claim is active; fall back to bare create_vault
+      const useRegistry = myClaimActive && !claim?.vaultCreated;
+      const tx = useRegistry
+        ? buildCreateVaultWithRegistryTransaction(tribeId, coinName.trim(), coinSymbol.trim().toUpperCase())
+        : buildLaunchCoinTransaction(tribeId, coinName.trim(), coinSymbol.trim().toUpperCase());
       const signer = new CurrentAccountSigner(dAppKit);
       const result = await signer.signAndExecuteTransaction({ transaction: tx });
 
@@ -215,10 +261,20 @@ function LaunchCoinForm({ onSuccess }: { onSuccess: () => void }) {
       if (vaultId) {
         setCachedVaultId(tribeId, vaultId);
         console.log("[CradleOS] TribeVault launched:", vaultId);
+        // Give the indexer time to catch up before re-fetching
+        setTimeout(() => onSuccess(), 4000);
       } else {
-        console.warn("[CradleOS] Could not auto-detect vault ID — user will need to paste it");
+        console.warn("[CradleOS] Could not auto-detect vault ID — showing paste prompt");
+        // Show paste prompt so user can recover; also retry discovery in background
+        setTxSent(true);
+        setTimeout(async () => {
+          const discovered = await discoverVaultIdFromChain(account.address);
+          if (discovered && tribeId) {
+            setCachedVaultId(tribeId, discovered);
+            onSuccess();
+          }
+        }, 6000);
       }
-      onSuccess();
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally { setBusy(false); }
@@ -240,8 +296,8 @@ function LaunchCoinForm({ onSuccess }: { onSuccess: () => void }) {
     <div className="card" style={{ maxWidth: "460px" }}>
       <h3 style={{ color: "#ffa032", marginBottom: "4px" }}>⚓ Launch Tribe Coin</h3>
       <p style={{ color: "#888", fontSize: "13px", marginBottom: "18px" }}>
-        Create an on-chain cryptocurrency for your tribe. Only the tribe founder can launch.
-        Coins are issued to members as contribution rewards.
+        Create an on-chain cryptocurrency for your tribe. Register a claim first, then launch.
+        The claim proves tribe membership and prevents vault squatting.
       </p>
 
       {/* Tribe ID display */}
@@ -296,15 +352,97 @@ function LaunchCoinForm({ onSuccess }: { onSuccess: () => void }) {
         </div>
       </div>
 
+      {/* ── Claim status ── */}
+      {tribeId != null && (
+        <div style={{
+          marginBottom: "14px", padding: "12px 14px",
+          background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "8px",
+        }}>
+          <div style={{ color: "#555", fontSize: "10px", letterSpacing: "0.06em", marginBottom: "6px" }}>
+            CLAIM STATUS
+          </div>
+          {claimLoading ? (
+            <div style={{ color: "#555", fontSize: "12px" }}>Checking registry…</div>
+          ) : !claim ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div style={{ color: "#ff6432", fontSize: "12px", flex: 1 }}>
+                ✗ No claim for tribe #{tribeId} — register to prove membership
+              </div>
+              <button
+                onClick={handleRegisterClaim}
+                disabled={claimBusy || !characterId}
+                style={{
+                  background: "rgba(255,160,50,0.1)", border: "1px solid rgba(255,160,50,0.3)",
+                  color: "#ffa032", borderRadius: "4px", fontSize: "11px", padding: "5px 12px", cursor: "pointer",
+                  flexShrink: 0,
+                }}
+              >
+                {claimBusy ? "…" : "Register Claim"}
+              </button>
+            </div>
+          ) : myClaimActive ? (
+            <div style={{ color: "#00ff96", fontSize: "12px" }}>
+              ✓ Claim active — you hold tribe #{tribeId} (epoch {claim.claimEpoch})
+              {claim.vaultCreated && " · vault already created"}
+            </div>
+          ) : (
+            <div style={{ color: "#ff6432", fontSize: "12px" }}>
+              ⚠ Tribe #{tribeId} claimed by another wallet. See Registry tab to challenge.
+            </div>
+          )}
+        </div>
+      )}
+
       <button
         className="accent-button"
         onClick={handleLaunch}
-        disabled={busy || !tribeId || !coinName.trim() || !coinSymbol.trim() || !account}
+        disabled={busy || txSent || !tribeId || !coinName.trim() || !coinSymbol.trim() || !account || claimConflict || claim?.vaultCreated === true}
         style={{ width: "100%", padding: "11px", marginTop: "4px" }}
       >
         {busy ? "Launching…" : `Launch ${coinSymbol.trim() || "COIN"} for Tribe ${tribeId ?? "…"}`}
       </button>
       {err && <div style={{ color: "#ff6432", fontSize: "11px", marginTop: "8px" }}>⚠ {err}</div>}
+
+      {/* Post-launch: tx sent but vault ID not auto-detected yet */}
+      {txSent && (
+        <div style={{
+          marginTop: "16px", padding: "14px",
+          background: "rgba(255,160,50,0.06)", border: "1px solid rgba(255,160,50,0.25)", borderRadius: "8px",
+        }}>
+          <div style={{ color: "#ffa032", fontWeight: 600, fontSize: "13px", marginBottom: "6px" }}>
+            ✓ Transaction sent — looking up vault…
+          </div>
+          <div style={{ color: "#888", fontSize: "12px", marginBottom: "10px" }}>
+            Auto-detecting vault ID. If it doesn't load in ~10 seconds, paste the vault object ID
+            from the Sui explorer link in your wallet.
+          </div>
+          <input
+            value={pasteId}
+            onChange={e => setPasteId(e.target.value.trim())}
+            placeholder="0x… TribeVault object ID"
+            style={{
+              width: "100%", background: "rgba(255,160,50,0.08)",
+              border: "1px solid rgba(255,160,50,0.30)", borderRadius: "6px",
+              color: "#ffa032", fontSize: "12px", padding: "8px 10px",
+              outline: "none", boxSizing: "border-box", fontFamily: "monospace",
+              marginBottom: "8px",
+            }}
+          />
+          <button
+            className="accent-button"
+            onClick={() => {
+              if (pasteId && tribeId) {
+                setCachedVaultId(tribeId, pasteId);
+                onSuccess();
+              }
+            }}
+            disabled={!pasteId || !tribeId}
+            style={{ padding: "7px 18px", fontSize: "12px" }}
+          >
+            Connect Vault
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -408,6 +546,16 @@ function VaultDashboard({
     },
     enabled: !!account && isFounder,
     staleTime: 60_000,
+  });
+
+  // Registered structure IDs — filter out already-registered structures from the list
+  const { data: registeredIds } = useQuery<Set<string>>({
+    queryKey: ["registeredInfra", vault.registeredInfraTableId],
+    queryFn: () => vault.registeredInfraTableId
+      ? fetchRegisteredInfraIds(vault.registeredInfraTableId)
+      : Promise.resolve(new Set<string>()),
+    enabled: isFounder && !!vault.registeredInfraTableId,
+    staleTime: 20_000,
   });
 
   const handleIssue = async () => {
@@ -598,12 +746,13 @@ function VaultDashboard({
             {nonNodeStructures.map(s => {
               const credits = (s.energyCost ?? 0) * 1000;
               const isBusy = infraBusy === s.objectId;
+              const isRegistered = registeredIds?.has(s.objectId.toLowerCase()) ?? false;
               return (
                 <div key={s.objectId} style={{
                   display: "flex", alignItems: "center", gap: "8px",
                   padding: "6px 10px",
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.06)",
+                  background: isRegistered ? "rgba(0,255,150,0.04)" : "rgba(255,255,255,0.03)",
+                  border: `1px solid ${isRegistered ? "rgba(0,255,150,0.15)" : "rgba(255,255,255,0.06)"}`,
                   borderRadius: "6px",
                 }}>
                   <span style={{ color: "#888", fontSize: "11px", minWidth: "80px" }}>{s.kind}</span>
@@ -617,31 +766,43 @@ function VaultDashboard({
                       border: "1px solid rgba(255,160,50,0.2)",
                       borderRadius: "4px", padding: "1px 5px",
                     }}>
-                      ⚡{s.energyCost} → +{credits.toLocaleString()} {vault.coinSymbol}
+                      ⚡{s.energyCost} → +{credits.toLocaleString()} CRDL
                     </span>
                   )}
-                  <button
-                    onClick={() => handleRegister(s)}
-                    disabled={isBusy || !s.energyCost}
-                    style={{
-                      background: "rgba(0,255,150,0.1)", border: "1px solid #00ff9640",
-                      color: "#00ff96", borderRadius: "4px",
-                      fontSize: "11px", padding: "3px 10px", cursor: "pointer",
-                    }}
-                  >
-                    {isBusy ? "…" : "Register"}
-                  </button>
-                  <button
-                    onClick={() => handleDeregister(s)}
-                    disabled={isBusy}
-                    style={{
-                      background: "rgba(255,100,50,0.08)", border: "1px solid rgba(255,100,50,0.3)",
-                      color: "#ff8060", borderRadius: "4px",
-                      fontSize: "11px", padding: "3px 10px", cursor: "pointer",
-                    }}
-                  >
-                    {isBusy ? "…" : "Remove"}
-                  </button>
+                  {isRegistered ? (
+                    <>
+                      <span style={{
+                        fontSize: "11px", color: "#00ff96",
+                        background: "rgba(0,255,150,0.08)", border: "1px solid rgba(0,255,150,0.2)",
+                        borderRadius: "4px", padding: "3px 10px",
+                      }}>
+                        ✓ Registered
+                      </span>
+                      <button
+                        onClick={() => handleDeregister(s)}
+                        disabled={isBusy}
+                        style={{
+                          background: "rgba(255,100,50,0.08)", border: "1px solid rgba(255,100,50,0.3)",
+                          color: "#ff8060", borderRadius: "4px",
+                          fontSize: "11px", padding: "3px 10px", cursor: "pointer",
+                        }}
+                      >
+                        {isBusy ? "…" : "Remove"}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => handleRegister(s)}
+                      disabled={isBusy || !s.energyCost}
+                      style={{
+                        background: "rgba(0,255,150,0.1)", border: "1px solid #00ff9640",
+                        color: "#00ff96", borderRadius: "4px",
+                        fontSize: "11px", padding: "3px 10px", cursor: "pointer",
+                      }}
+                    >
+                      {isBusy ? "…" : "Register"}
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -864,6 +1025,7 @@ export function TribeVaultPanel({ onTxSuccess }: Props) {
       queryClient.invalidateQueries({ queryKey: ["tribeVault"] });
       queryClient.invalidateQueries({ queryKey: ["myVaultBalance"] });
       queryClient.invalidateQueries({ queryKey: ["coinIssuedEvents"] });
+      queryClient.invalidateQueries({ queryKey: ["registeredInfra"] });
       onTxSuccess?.();
     }, delayMs);
   };
@@ -912,7 +1074,10 @@ export function TribeVaultPanel({ onTxSuccess }: Props) {
 
   // Stale vault: type is explicitly from a different package.
   // Only flag if we have a confirmed non-empty type that doesn't match — never block on missing type.
-  const isStaleVault = !!vault._type && !vault._type.startsWith(CRADLEOS_PKG);
+  // Stale check: v3 vaults lack the registered_infra field (registeredInfraTableId = "").
+  // Sui upgrade model means all vault types carry the ORIGINAL package ID regardless of
+  // which version created them — never use vault._type for version detection.
+  const isStaleVault = !vault.registeredInfraTableId;
   if (isStaleVault) {
     return (
       <div className="card" style={{ border: "1px solid rgba(255,160,50,0.4)", padding: "24px" }}>

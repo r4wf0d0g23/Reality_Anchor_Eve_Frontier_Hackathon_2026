@@ -2,6 +2,7 @@ import { Transaction } from "@mysten/sui/transactions";
 import {
   CLOCK,
   CRADLEOS_PKG,
+  CRADLEOS_EVENTS_PKG,
   CRADLE_MINT_CONTROLLER,
   CRDL_COIN_TYPE,
   ENERGY_CONFIG,
@@ -89,7 +90,7 @@ function readPath(obj: unknown, ...path: string[]): unknown {
   return current;
 }
 
-function numish(value: unknown): number | null {
+export function numish(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string") {
     const parsed = Number(value);
@@ -333,7 +334,7 @@ export type CharacterInfo = {
   tribeId: number;
 };
 
-async function findCharacterForWallet(walletAddress: string): Promise<CharacterInfo | null> {
+export async function findCharacterForWallet(walletAddress: string): Promise<CharacterInfo | null> {
   // Character is a Shared object — can't find via getOwnedObjects.
   // Query CharacterCreatedEvent, paginate all pages, match character_address.
   let cursor: string | null = null;
@@ -958,7 +959,7 @@ export async function fetchTreasuryActivity(treasuryId: string): Promise<Treasur
         body: JSON.stringify({
           jsonrpc: "2.0", id: 1,
           method: "suix_queryEvents",
-          params: [{ MoveEventType: `${CRADLEOS_PKG}::treasury::${eventType}` }, null, 20, false],
+          params: [{ MoveEventType: `${CRADLEOS_EVENTS_PKG}::treasury::${eventType}` }, null, 20, false],
         }),
       });
       const json = await res.json() as { result: { data: Array<{ parsedJson: Record<string, unknown>; timestampMs: number }> } };
@@ -994,7 +995,7 @@ export function buildInitializeCorpTransaction(corpName: string, senderAddress: 
   });
 
   const treasury = tx.moveCall({
-    target: `${CRADLEOS_PKG}::treasury::create_treasury`,
+    target: `${CRADLEOS_EVENTS_PKG}::treasury::create_treasury`,
     arguments: [corp],
   });
 
@@ -1031,7 +1032,7 @@ export function buildDepositTransaction(
   const amountMist = BigInt(Math.floor(amountSui * 1e9));
   const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(amountMist)]);
   tx.moveCall({
-    target: `${CRADLEOS_PKG}::treasury::deposit`,
+    target: `${CRADLEOS_EVENTS_PKG}::treasury::deposit`,
     arguments: [tx.object(treasuryId), tx.object(corpId), coin],
   });
   return tx;
@@ -1048,7 +1049,7 @@ export function buildWithdrawTransaction(
   const tx = new Transaction();
   const amountMist = BigInt(Math.floor(amountSui * 1e9));
   const [coin] = tx.moveCall({
-    target: `${CRADLEOS_PKG}::treasury::withdraw`,
+    target: `${CRADLEOS_EVENTS_PKG}::treasury::withdraw`,
     arguments: [
       tx.object(treasuryId),
       tx.object(corpId),
@@ -1084,6 +1085,8 @@ export type TribeVaultState = {
   _type: string;
   /** Inner UID of the balances Table — needed to query member balances as dynamic fields */
   balancesTableId: string;
+  /** Inner UID of the registered_infra Table — needed to query registered structure IDs */
+  registeredInfraTableId: string;
 };
 
 export type CoinIssuedEvent = {
@@ -1103,6 +1106,8 @@ export async function fetchTribeVault(vaultId: string): Promise<TribeVaultState 
     // Extract the balances Table's inner UID so we can query member balances as dynamic fields
     const balancesField = fields["balances"] as { fields?: { id?: { id?: string } } } | undefined;
     const balancesTableId = balancesField?.fields?.id?.id ?? "";
+    const infraField = fields["registered_infra"] as { fields?: { id?: { id?: string } } } | undefined;
+    const registeredInfraTableId = infraField?.fields?.id?.id ?? "";
     return {
       objectId: vaultId,
       tribeId: numish(fields["tribe_id"]) ?? 0,
@@ -1113,8 +1118,28 @@ export async function fetchTribeVault(vaultId: string): Promise<TribeVaultState 
       infraCredits: numish(fields["infra_credits"]) ?? 0,
       _type: String(fields["_type"] ?? ""),
       balancesTableId,
+      registeredInfraTableId,
     };
   } catch { return null; }
+}
+
+/** Fetch the set of structure IDs already registered to a vault. */
+export async function fetchRegisteredInfraIds(registeredInfraTableId: string): Promise<Set<string>> {
+  if (!registeredInfraTableId) return new Set();
+  try {
+    const res = await fetch(SUI_TESTNET_RPC, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0", id: 1,
+        method: "suix_getDynamicFields",
+        params: [registeredInfraTableId, null, 100],
+      }),
+    });
+    const j = await res.json() as { result?: { data?: Array<{ name: { value: string } }> } };
+    const ids = (j.result?.data ?? []).map(e => String(e.name.value).toLowerCase());
+    return new Set(ids);
+  } catch { return new Set(); }
 }
 
 /** Fetch member balance from the vault's balances Table. */
@@ -1177,7 +1202,7 @@ export async function fetchCoinIssuedEvents(vaultId: string): Promise<CoinIssued
       body: JSON.stringify({
         jsonrpc: "2.0", id: 1,
         method: "suix_queryEvents",
-        params: [{ MoveEventType: `${CRADLEOS_PKG}::tribe_vault::CoinIssued` }, null, 50, false],
+        params: [{ MoveEventType: `${CRADLEOS_EVENTS_PKG}::tribe_vault::CoinIssued` }, null, 50, false],
       }),
     });
     const json = await res.json() as { result: { data: Array<{ parsedJson: Record<string, unknown>; timestampMs: number }> } };
@@ -1227,7 +1252,7 @@ export function buildIssueCoinTransaction(
 ): Transaction {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${CRADLEOS_PKG}::tribe_vault::issue_coin`,
+    target: `${CRADLEOS_PKG}::tribe_vault::issue_coin_entry`,
     arguments: [
       tx.object(vaultId),
       tx.pure.address(recipientAddress),
@@ -1429,7 +1454,7 @@ export async function fetchOrderFilledEvents(dexId: string): Promise<OrderFilled
       body: JSON.stringify({
         jsonrpc: "2.0", id: 1,
         method: "suix_queryEvents",
-        params: [{ MoveEventType: `${CRADLEOS_PKG}::tribe_dex::OrderFilled` }, null, 50, false],
+        params: [{ MoveEventType: `${CRADLEOS_EVENTS_PKG}::tribe_dex::OrderFilled` }, null, 50, false],
       }),
     });
     const j = await res.json() as {
@@ -1551,11 +1576,195 @@ export async function discoverDexIdForVault(vaultId: string): Promise<string | n
       body: JSON.stringify({
         jsonrpc: "2.0", id: 1,
         method: "suix_queryEvents",
-        params: [{ MoveEventType: `${CRADLEOS_PKG}::tribe_dex::DexCreated` }, null, 50, false],
+        params: [{ MoveEventType: `${CRADLEOS_EVENTS_PKG}::tribe_dex::DexCreated` }, null, 50, false],
       }),
     });
     const j = await res.json() as { result?: { data?: Array<{ parsedJson?: { dex_id?: string; vault_id?: string } }> } };
     const mine = (j.result?.data ?? []).find(e => e.parsedJson?.vault_id === vaultId);
     return mine?.parsedJson?.dex_id ?? null;
   } catch { return null; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CHARACTER REGISTRY — proof-based tribe vault ownership (v6)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const CHARACTER_REGISTRY_ID = "0xab7cdd5076ad39445c5732c95cd2482f4a940d5952c9d456c07767553718036b";
+
+export type TribeClaim = {
+  claimer: string;
+  characterId: string;
+  claimEpoch: number;
+  vaultCreated: boolean;
+};
+
+/** Fetch the registry object and return claim for a given tribe_id. */
+export async function fetchTribeClaim(tribeId: number): Promise<TribeClaim | null> {
+  try {
+    await fetch(SUI_TESTNET_RPC, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0", id: 1,
+        method: "suix_getDynamicFields",
+        params: [
+          // Claims table inner UID — need to fetch registry first to get it
+          CHARACTER_REGISTRY_ID, null, 200,
+        ],
+      }),
+    });
+    // The claims table inner UID must be extracted from the registry object
+    const reg = await rpcGetObject(CHARACTER_REGISTRY_ID);
+    const claimsField = reg["claims"] as { fields?: { id?: { id?: string } } } | undefined;
+    const claimsTableId = claimsField?.fields?.id?.id ?? "";
+    if (!claimsTableId) return null;
+
+    // Look for dynamic field with key == tribeId
+    const dfRes = await fetch(SUI_TESTNET_RPC, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0", id: 1,
+        method: "suix_getDynamicFieldObject",
+        params: [claimsTableId, { type: "u32", value: tribeId }],
+      }),
+    });
+    const dfJson = await dfRes.json() as { result?: { data?: { content?: { fields?: Record<string, unknown> } } } };
+    const f = dfJson.result?.data?.content?.fields ?? {};
+    const val = (f["value"] as { fields?: Record<string, unknown> })?.fields ?? {};
+    if (!val["claimer"]) return null;
+    return {
+      claimer: String(val["claimer"] ?? ""),
+      characterId: String(val["character_id"] ?? ""),
+      claimEpoch: numish(val["claim_epoch"]) ?? 0,
+      vaultCreated: Boolean(val["vault_created"]),
+    };
+  } catch { return null; }
+}
+
+/** Build register_claim transaction. */
+export function buildRegisterClaimTransaction(
+  tribeId: number,
+  characterId: string,
+): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${CRADLEOS_PKG}::character_registry::register_claim`,
+    arguments: [
+      tx.object(CHARACTER_REGISTRY_ID),
+      tx.pure.u32(tribeId >>> 0),
+      tx.pure.address(characterId),
+    ],
+  });
+  return tx;
+}
+
+/** Build create_vault_with_registry transaction (replaces bare create_vault for v6). */
+export function buildCreateVaultWithRegistryTransaction(
+  tribeId: number,
+  coinName: string,
+  coinSymbol: string,
+): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${CRADLEOS_PKG}::character_registry::create_vault_with_registry`,
+    arguments: [
+      tx.object(CHARACTER_REGISTRY_ID),
+      tx.pure.u32(tribeId >>> 0),
+      tx.pure.vector("u8", [...new TextEncoder().encode(coinName)]),
+      tx.pure.vector("u8", [...new TextEncoder().encode(coinSymbol)]),
+    ],
+  });
+  return tx;
+}
+
+/** Build issue_attestation transaction (attestor only). */
+export function buildIssueAttestationTransaction(
+  beneficiary: string,
+  tribeId: number,
+  characterId: string,
+  joinEpoch: number,
+): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${CRADLEOS_PKG}::character_registry::issue_attestation`,
+    arguments: [
+      tx.object(CHARACTER_REGISTRY_ID),
+      tx.pure.address(beneficiary),
+      tx.pure.u32(tribeId >>> 0),
+      tx.pure.address(characterId),
+      tx.pure.u64(BigInt(joinEpoch)),
+    ],
+  });
+  return tx;
+}
+
+/** Build challenge_and_take_vault transaction. */
+export function buildChallengeAndTakeVaultTransaction(
+  vaultId: string,
+  attestationId: string,
+): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${CRADLEOS_PKG}::character_registry::challenge_and_take_vault`,
+    arguments: [
+      tx.object(CHARACTER_REGISTRY_ID),
+      tx.object(vaultId),
+      tx.object(attestationId),
+    ],
+  });
+  return tx;
+}
+
+/** Build invalidate_claim transaction (attestor only). */
+export function buildInvalidateClaimTransaction(tribeId: number): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${CRADLEOS_PKG}::character_registry::invalidate_claim`,
+    arguments: [
+      tx.object(CHARACTER_REGISTRY_ID),
+      tx.pure.u32(tribeId >>> 0),
+    ],
+  });
+  return tx;
+}
+
+/** Build set_attestor transaction (admin only). */
+export function buildSetAttestorTransaction(newAttestor: string): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${CRADLEOS_PKG}::character_registry::set_attestor`,
+    arguments: [
+      tx.object(CHARACTER_REGISTRY_ID),
+      tx.pure.address(newAttestor),
+    ],
+  });
+  return tx;
+}
+
+/** Fetch owned EpochAttestation objects for a wallet. */
+export async function fetchAttestationsForWallet(walletAddress: string): Promise<Array<{
+  objectId: string; tribeId: number; joinEpoch: number; characterId: string;
+}>> {
+  try {
+    const res = await fetch(SUI_TESTNET_RPC, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0", id: 1,
+        method: "suix_getOwnedObjects",
+        params: [walletAddress, {
+          filter: { StructType: `${CRADLEOS_PKG}::character_registry::EpochAttestation` },
+          options: { showContent: true },
+        }, null, 20],
+      }),
+    });
+    const j = await res.json() as { result?: { data?: Array<{ data?: { objectId?: string; content?: { fields?: Record<string, unknown> } } }> } };
+    return (j.result?.data ?? []).map(item => {
+      const f = item.data?.content?.fields ?? {};
+      return {
+        objectId: item.data?.objectId ?? "",
+        tribeId: numish(f["tribe_id"]) ?? 0,
+        joinEpoch: numish(f["join_epoch"]) ?? 0,
+        characterId: String(f["character_id"] ?? ""),
+      };
+    }).filter(a => a.objectId);
+  } catch { return []; }
 }
