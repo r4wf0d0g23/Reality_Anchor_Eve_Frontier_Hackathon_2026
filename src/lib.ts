@@ -2,6 +2,7 @@ import { Transaction } from "@mysten/sui/transactions";
 import {
   CLOCK,
   CRADLEOS_PKG,
+  ENERGY_CONFIG,
   FUEL_CONFIG,
   NETWORK_NODE_TYPE,
   RAW_CHARACTER_ID,
@@ -203,7 +204,27 @@ export function buildBringOnlineTransaction() {
   return tx;
 }
 
-export function buildBringOfflineTransaction() {
+const GATE_TYPE = `${WORLD_PKG}::gate::Gate`;
+const ASSEMBLY_TYPE = `${WORLD_PKG}::assembly::Assembly`;
+
+export async function buildBringOfflineTransaction(): Promise<Transaction> {
+  // Fetch live connected assembly IDs and their types
+  const fields = await rpcGetObject(RAW_NETWORK_NODE_ID);
+  const connectedIds = (fields["connected_assembly_ids"] as string[] | undefined) ?? [];
+
+  // Resolve type for each connected assembly
+  const assemblyMeta: Array<{ id: string; type: string }> = await Promise.all(
+    connectedIds.map(async (id) => {
+      const res = await fetch(SUI_TESTNET_RPC, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "sui_getObject", params: [id, { showType: true }] }),
+      });
+      const json = await res.json() as { result: { data: { type: string } } };
+      return { id, type: json.result.data.type };
+    })
+  );
+
   const tx = new Transaction();
 
   const [cap, receipt] = tx.moveCall({
@@ -212,14 +233,30 @@ export function buildBringOfflineTransaction() {
     arguments: [tx.object(RAW_CHARACTER_ID), tx.object(RAW_NODE_OWNER_CAP)],
   });
 
-  const [offlineAssemblies] = tx.moveCall({
+  let offlineHotPotato = tx.moveCall({
     target: `${WORLD_PKG}::network_node::offline`,
     arguments: [tx.object(RAW_NETWORK_NODE_ID), tx.object(FUEL_CONFIG), cap, tx.object(CLOCK)],
-  });
+  })[0];
+
+  // Drain connected assemblies from the hot potato
+  for (const { id, type } of assemblyMeta) {
+    if (type === GATE_TYPE) {
+      offlineHotPotato = tx.moveCall({
+        target: `${WORLD_PKG}::gate::offline_connected_gate`,
+        arguments: [tx.object(id), offlineHotPotato, tx.object(RAW_NETWORK_NODE_ID), tx.object(ENERGY_CONFIG)],
+      })[0];
+    } else if (type === ASSEMBLY_TYPE) {
+      offlineHotPotato = tx.moveCall({
+        target: `${WORLD_PKG}::assembly::offline_connected_assembly`,
+        arguments: [tx.object(id), offlineHotPotato, tx.object(RAW_NETWORK_NODE_ID), tx.object(ENERGY_CONFIG)],
+      })[0];
+    }
+    // other assembly types (turret, storage_unit) can be added here
+  }
 
   tx.moveCall({
     target: `${WORLD_PKG}::network_node::destroy_offline_assemblies`,
-    arguments: [offlineAssemblies],
+    arguments: [offlineHotPotato],
   });
 
   tx.moveCall({

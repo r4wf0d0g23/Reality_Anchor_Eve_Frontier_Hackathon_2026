@@ -36,7 +36,7 @@ export function NodeDashboard({ onTxSuccess }: Props) {
 
   const handleBringOffline = async () => {
     if (!account) throw new Error("No connected wallet available for signing.");
-    const tx = buildBringOfflineTransaction();
+    const tx = await buildBringOfflineTransaction();
     const signer = new CurrentAccountSigner(dAppKit);
     const result = await signer.signAndExecuteTransaction({ transaction: tx });
     onTxSuccess?.(readDigest(result));
