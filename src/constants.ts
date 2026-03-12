@@ -15,6 +15,12 @@ export const TURRET_TYPE = `${WORLD_PKG}::turret::Turret`;
 export const STORAGE_UNIT_TYPE = `${WORLD_PKG}::storage_unit::StorageUnit`;
 export const CHARACTER_TYPE = `${WORLD_PKG}::character::Character`;
 export const CORP_REGISTRY_TYPE = `${CRADLEOS_PKG}::corp_registry::CorpRegistry`;
+export const CORP_TYPE      = `${CRADLEOS_PKG}::corp::Corp`;
+export const MEMBER_CAP_TYPE = `${CRADLEOS_PKG}::corp::MemberCap`;
+export const TREASURY_TYPE  = `${CRADLEOS_PKG}::treasury::Treasury`;
+export const REGISTRY_TYPE  = `${CRADLEOS_PKG}::registry::Registry`;
+
+export const MIST_PER_SUI = 1_000_000_000n;
 
 export const STRUCTURE_TYPES = [
   { type: NETWORK_NODE_TYPE, kind: "NetworkNode" as const, mod: "network_node", label: "Network Node" },

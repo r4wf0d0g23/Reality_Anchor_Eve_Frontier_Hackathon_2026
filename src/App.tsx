@@ -2,6 +2,9 @@ import { useState } from "react";
 import { abbreviateAddress, useConnection } from "@evefrontier/dapp-kit";
 import { useCurrentAccount, useWallets, useDAppKit } from "@mysten/dapp-kit-react";
 import { StructurePanel } from "./components/StructurePanel";
+import { TreasuryPanel } from "./components/TreasuryPanel";
+
+type Tab = "structures" | "treasury";
 
 function App() {
   const { handleDisconnect, hasEveVault, isConnected } = useConnection();
@@ -10,6 +13,7 @@ function App() {
   const dAppKit = useDAppKit();
   const [lastDigest, setLastDigest] = useState<string | undefined>();
   const [connectError, setConnectError] = useState<string | undefined>();
+  const [activeTab, setActiveTab] = useState<Tab>("structures");
 
   const handleConnect = async () => {
     const wallet = wallets.find(w => w.name.includes("Eve Vault")) || wallets[0];
@@ -79,8 +83,34 @@ function App() {
         ) : null}
       </section>
 
+      {/* Main nav tabs */}
+      <div style={{ display: "flex", gap: "4px", padding: "0 0 16px 0" }}>
+        {(["structures", "treasury"] as Tab[]).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              padding: "8px 22px",
+              borderRadius: "20px",
+              border: `1px solid ${activeTab === tab ? "#ffa032" : "rgba(255,160,50,0.2)"}`,
+              background: activeTab === tab ? "rgba(255,160,50,0.12)" : "transparent",
+              color: activeTab === tab ? "#ffa032" : "#666",
+              cursor: "pointer",
+              fontSize: "13px",
+              fontWeight: activeTab === tab ? 700 : 400,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              transition: "all 0.15s",
+            }}
+          >
+            {tab === "structures" ? "🏗 Structures" : "⚓ Corp Treasury"}
+          </button>
+        ))}
+      </div>
+
       <div className="dashboard-grid">
-        <StructurePanel onTxSuccess={setLastDigest} />
+        {activeTab === "structures" && <StructurePanel onTxSuccess={setLastDigest} />}
+        {activeTab === "treasury"   && <TreasuryPanel  onTxSuccess={setLastDigest} />}
       </div>
     </main>
   );

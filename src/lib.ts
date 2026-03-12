@@ -602,3 +602,217 @@ export function buildRenameTransaction(
 
   return tx;
 }
+
+// ─── Corp & Treasury ──────────────────────────────────────────────────────────
+
+import {
+  CORP_TYPE,
+  MEMBER_CAP_TYPE,
+  TREASURY_TYPE,
+  REGISTRY_TYPE,
+
+} from "./constants";
+
+export type MemberCapInfo = {
+  objectId: string;
+  corpId: string;
+  member: string;
+  role: number;   // 0=member, 1=officer, 2=director
+};
+
+export type CorpState = {
+  corpId: string;
+  name: string;
+  founder: string;
+  memberCount: number;
+  active: boolean;
+};
+
+export type TreasuryState = {
+  objectId: string;
+  corpId: string;
+  balanceMist: bigint;
+  totalDepositedMist: bigint;
+  totalWithdrawnMist: bigint;
+  balanceSui: number;
+};
+
+export type TreasuryActivity = {
+  kind: "deposit" | "withdraw";
+  amount: number;
+  actor: string;
+  newBalance: number;
+  timestampMs: number;
+};
+
+/** Find MemberCap owned by the connected wallet for a given corp (or first found). */
+export async function fetchMemberCap(walletAddress: string): Promise<MemberCapInfo | null> {
+  const caps = await rpcGetOwnedObjects(walletAddress, MEMBER_CAP_TYPE, 10);
+  if (!caps.length) return null;
+  const { objectId, fields } = caps[0];
+  return {
+    objectId,
+    corpId: fields["corp_id"] as string,
+    member: fields["member"] as string,
+    role: numish(fields["role"]) ?? 0,
+  };
+}
+
+/** Fetch Corp state by shared object ID. */
+export async function fetchCorpState(corpId: string): Promise<CorpState | null> {
+  try {
+    const fields = await rpcGetObject(corpId);
+    const nameBytes = fields["name"];
+    const name = Array.isArray(nameBytes)
+      ? new TextDecoder().decode(new Uint8Array(nameBytes as number[]))
+      : String(nameBytes ?? "");
+    return {
+      corpId,
+      name,
+      founder: fields["founder"] as string,
+      memberCount: (fields["members"] as unknown[])?.length ?? 0,
+      active: fields["active"] as boolean,
+    };
+  } catch { return null; }
+}
+
+/** Fetch Treasury state by shared object ID. */
+export async function fetchTreasuryState(treasuryId: string): Promise<TreasuryState | null> {
+  try {
+    const fields = await rpcGetObject(treasuryId);
+    const balanceMist = BigInt(
+      (asRecord(fields["balance"])?.["value"] as string | number) ?? 0
+    );
+    const totalDeposited = BigInt(String(fields["total_deposited"] ?? 0));
+    const totalWithdrawn = BigInt(String(fields["total_withdrawn"] ?? 0));
+    return {
+      objectId: treasuryId,
+      corpId: fields["corp_id"] as string,
+      balanceMist,
+      totalDepositedMist: totalDeposited,
+      totalWithdrawnMist: totalWithdrawn,
+      balanceSui: Number(balanceMist) / 1e9,
+    };
+  } catch { return null; }
+}
+
+/** Fetch recent deposit/withdraw events for a treasury. */
+export async function fetchTreasuryActivity(treasuryId: string): Promise<TreasuryActivity[]> {
+  const activities: TreasuryActivity[] = [];
+  for (const eventType of ["DepositRecord", "WithdrawRecord"] as const) {
+    try {
+      const res = await fetch(SUI_TESTNET_RPC, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0", id: 1,
+          method: "suix_queryEvents",
+          params: [{ MoveEventType: `${CRADLEOS_PKG}::treasury::${eventType}` }, null, 20, false],
+        }),
+      });
+      const json = await res.json() as { result: { data: Array<{ parsedJson: Record<string, unknown>; timestampMs: number }> } };
+      for (const e of json.result.data) {
+        if (e.parsedJson["treasury_id"] !== treasuryId) continue;
+        activities.push({
+          kind: eventType === "DepositRecord" ? "deposit" : "withdraw",
+          amount: (numish(e.parsedJson["amount"]) ?? 0) / 1e9,
+          actor: (e.parsedJson["depositor"] ?? e.parsedJson["recipient"]) as string,
+          newBalance: (numish(e.parsedJson["new_balance"]) ?? 0) / 1e9,
+          timestampMs: e.timestampMs,
+        });
+      }
+    } catch { /* best effort */ }
+  }
+  return activities.sort((a, b) => b.timestampMs - a.timestampMs);
+}
+
+/** All-in-one: found_corp + create_treasury + share all objects. */
+export function buildInitializeCorpTransaction(corpName: string, senderAddress: string): Transaction {
+  const tx = new Transaction();
+
+  const registry = tx.moveCall({
+    target: `${CRADLEOS_PKG}::registry::create_registry`,
+  });
+
+  const [corp, memberCap] = tx.moveCall({
+    target: `${CRADLEOS_PKG}::corp::found_corp`,
+    arguments: [
+      registry,
+      tx.pure.vector("u8", [...new TextEncoder().encode(corpName)]),
+    ],
+  });
+
+  const treasury = tx.moveCall({
+    target: `${CRADLEOS_PKG}::treasury::create_treasury`,
+    arguments: [corp],
+  });
+
+  // Share Registry, Corp, Treasury
+  tx.moveCall({
+    target: "0x2::transfer::public_share_object",
+    typeArguments: [REGISTRY_TYPE],
+    arguments: [registry],
+  });
+  tx.moveCall({
+    target: "0x2::transfer::public_share_object",
+    typeArguments: [CORP_TYPE],
+    arguments: [corp],
+  });
+  tx.moveCall({
+    target: "0x2::transfer::public_share_object",
+    typeArguments: [TREASURY_TYPE],
+    arguments: [treasury],
+  });
+
+  // Keep MemberCap (director) in sender's wallet
+  tx.transferObjects([memberCap], tx.pure.address(senderAddress));
+
+  return tx;
+}
+
+/** Deposit SUI (any corp member). amountSui is human-readable SUI (not MIST). */
+export function buildDepositTransaction(
+  treasuryId: string,
+  corpId: string,
+  amountSui: number,
+): Transaction {
+  const tx = new Transaction();
+  const amountMist = BigInt(Math.floor(amountSui * 1e9));
+  const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(amountMist)]);
+  tx.moveCall({
+    target: `${CRADLEOS_PKG}::treasury::deposit`,
+    arguments: [tx.object(treasuryId), tx.object(corpId), coin],
+  });
+  return tx;
+}
+
+/** Withdraw SUI (directors only). amountSui is human-readable SUI. */
+export function buildWithdrawTransaction(
+  treasuryId: string,
+  corpId: string,
+  memberCapId: string,
+  amountSui: number,
+  recipientAddress: string,
+): Transaction {
+  const tx = new Transaction();
+  const amountMist = BigInt(Math.floor(amountSui * 1e9));
+  const [coin] = tx.moveCall({
+    target: `${CRADLEOS_PKG}::treasury::withdraw`,
+    arguments: [
+      tx.object(treasuryId),
+      tx.object(corpId),
+      tx.pure.u64(amountMist),
+      tx.object(memberCapId),
+    ],
+  });
+  tx.transferObjects([coin], tx.pure.address(recipientAddress));
+  return tx;
+}
+
+/** Treasury ID cache — keyed by corpId in localStorage. */
+export function getCachedTreasuryId(corpId: string): string | null {
+  try { return localStorage.getItem(`cradleos:treasury:${corpId}`); } catch { return null; }
+}
+export function setCachedTreasuryId(corpId: string, treasuryId: string): void {
+  try { localStorage.setItem(`cradleos:treasury:${corpId}`, treasuryId); } catch { /* */ }
+}
