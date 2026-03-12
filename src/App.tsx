@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { abbreviateAddress, useConnection } from "@evefrontier/dapp-kit";
 import { useCurrentAccount, useWallets, useDAppKit } from "@mysten/dapp-kit-react";
-import { CorpOverview } from "./components/CorpOverview";
-import { NodeDashboard } from "./components/NodeDashboard";
+import { StructurePanel } from "./components/StructurePanel";
 
 function App() {
   const { handleDisconnect, hasEveVault, isConnected } = useConnection();
@@ -80,8 +79,7 @@ function App() {
       </section>
 
       <div className="dashboard-grid">
-        <NodeDashboard onTxSuccess={setLastDigest} />
-        <CorpOverview />
+        <StructurePanel onTxSuccess={setLastDigest} />
       </div>
     </main>
   );

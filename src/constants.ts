@@ -9,4 +9,19 @@ export const CLOCK = "0x6";
 export const SUI_TESTNET_RPC = "https://fullnode.testnet.sui.io:443";
 
 export const NETWORK_NODE_TYPE = `${WORLD_PKG}::network_node::NetworkNode`;
+export const GATE_TYPE = `${WORLD_PKG}::gate::Gate`;
+export const ASSEMBLY_TYPE = `${WORLD_PKG}::assembly::Assembly`;
+export const TURRET_TYPE = `${WORLD_PKG}::turret::Turret`;
+export const STORAGE_UNIT_TYPE = `${WORLD_PKG}::storage_unit::StorageUnit`;
+export const CHARACTER_TYPE = `${WORLD_PKG}::character::Character`;
 export const CORP_REGISTRY_TYPE = `${CRADLEOS_PKG}::corp_registry::CorpRegistry`;
+
+export const STRUCTURE_TYPES = [
+  { type: NETWORK_NODE_TYPE, kind: "NetworkNode" as const, mod: "network_node", label: "Network Node" },
+  { type: GATE_TYPE,         kind: "Gate"        as const, mod: "gate",         label: "Gate"         },
+  { type: ASSEMBLY_TYPE,     kind: "Assembly"    as const, mod: "assembly",     label: "Assembly"     },
+  { type: TURRET_TYPE,       kind: "Turret"      as const, mod: "turret",       label: "Turret"       },
+  { type: STORAGE_UNIT_TYPE, kind: "StorageUnit" as const, mod: "storage_unit", label: "Storage Unit" },
+] as const;
+
+export type StructureKind = "NetworkNode" | "Gate" | "Assembly" | "Turret" | "StorageUnit";
