@@ -20,8 +20,8 @@ function readDigest(result: unknown): string | undefined {
 
 const KIND_ICON: Record<string, string> = {
   NetworkNode: "📡",
-  Gate: "🚪",
-  Assembly: "🔧",
+  Gate: "🔀",
+  Assembly: "⚙️",
   Turret: "🔫",
   StorageUnit: "📦",
 };

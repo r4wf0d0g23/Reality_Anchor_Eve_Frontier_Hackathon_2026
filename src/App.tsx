@@ -33,10 +33,11 @@ function App() {
           <p className="muted-text">Network node activation, corp telemetry, wallet-signed actions only.</p>
         </div>
 
-        <div style={{fontSize:'11px',opacity:0.6,fontFamily:'monospace',marginBottom:'4px'}}>
-          wallets: [{wallets.map(w=>w.name).join(', ')||'none'}] | hasEveVault: {String(hasEveVault)} | connected: {String(isConnected)}
-          {connectError && <span style={{color:'#ff6b6b',marginLeft:'8px'}}>ERR: {connectError}</span>}
-        </div>
+        {connectError && (
+          <div style={{fontSize:'11px',color:'#ff6b6b',fontFamily:'monospace',marginBottom:'4px'}}>
+            ERR: {connectError}
+          </div>
+        )}
         <div className="wallet-cluster">
           <div className="wallet-readout">
             <span className="stat-label">Wallet</span>
