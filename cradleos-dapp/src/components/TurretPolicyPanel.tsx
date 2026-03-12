@@ -513,7 +513,7 @@ function TurretPolicyPanelInner({ vault }: { vault: TribeVaultState }) {
         <div style={{ color: "#aaa", fontWeight: 600, marginBottom: "16px" }}>
           🛡 Tribe Defense Policy
         </div>
-        <p style={{ color: "#666", fontSize: "13px", marginBottom: "20px" }}>
+        <p style={{ color: "rgba(107,107,94,0.6)", fontSize: "13px", marginBottom: "20px" }}>
           No defense policy exists for this vault. Create one to manage tribe
           diplomatic relations and turret intel logging.
         </p>
@@ -533,8 +533,8 @@ function TurretPolicyPanelInner({ vault }: { vault: TribeVaultState }) {
     <div className="card">
       {/* Header + enforce toggle */}
       <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px", flexWrap: "wrap" }}>
-        <div style={{ color: "#ffa032", fontWeight: 700, fontSize: "18px" }}>🛡 Defense Policy</div>
-        <div style={{ color: "#555", fontSize: "12px" }}>v{policy?.version ?? 0}</div>
+        <div style={{ color: "#FF4700", fontWeight: 700, fontSize: "18px" }}>🛡 Defense Policy</div>
+        <div style={{ color: "rgba(107,107,94,0.55)", fontSize: "12px" }}>v{policy?.version ?? 0}</div>
         {isFounder && policy && (
           <button
             onClick={handleToggleEnforce}
@@ -543,7 +543,7 @@ function TurretPolicyPanelInner({ vault }: { vault: TribeVaultState }) {
               background: policy.enforce ? "rgba(0,255,150,0.12)" : "rgba(255,255,255,0.05)",
               border: `1px solid ${policy.enforce ? "#00ff9640" : "rgba(255,255,255,0.1)"}`,
               color: policy.enforce ? "#00ff96" : "#666",
-              borderRadius: "6px", fontSize: "12px", padding: "5px 14px", cursor: "pointer",
+              borderRadius: "2px", fontSize: "12px", padding: "5px 14px", cursor: "pointer",
             }}
           >
             {policy.enforce ? "⚡ Enforce: ON" : "○ Enforce: OFF"}
@@ -552,10 +552,10 @@ function TurretPolicyPanelInner({ vault }: { vault: TribeVaultState }) {
         {!isFounder && policy && (
           <div style={{
             marginLeft: "auto",
-            padding: "4px 12px", borderRadius: "6px", fontSize: "12px",
-            background: policy.enforce ? "rgba(255,160,50,0.1)" : "rgba(255,255,255,0.04)",
-            border: `1px solid ${policy.enforce ? "rgba(255,160,50,0.3)" : "rgba(255,255,255,0.08)"}`,
-            color: policy.enforce ? "#ffa032" : "#555",
+            padding: "4px 12px", borderRadius: "2px", fontSize: "12px",
+            background: policy.enforce ? "rgba(255,71,0,0.1)" : "rgba(255,255,255,0.04)",
+            border: `1px solid ${policy.enforce ? "rgba(255,71,0,0.3)" : "rgba(255,255,255,0.08)"}`,
+            color: policy.enforce ? "#FF4700" : "#555",
           }}>
             {policy.enforce ? "⚡ Policy Enforced" : "○ Advisory Only"}
           </div>
@@ -566,7 +566,7 @@ function TurretPolicyPanelInner({ vault }: { vault: TribeVaultState }) {
       {policy && (
         <div style={{
           marginBottom: "20px", padding: "14px 16px",
-          background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "8px",
+          background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "0",
         }}>
           <div style={{ color: "#aaa", fontSize: "11px", letterSpacing: "0.07em", marginBottom: "12px", fontWeight: 700 }}>
             SECURITY PROTOCOL
@@ -588,7 +588,7 @@ function TurretPolicyPanelInner({ vault }: { vault: TribeVaultState }) {
                   title={desc}
                   style={{
                     flex: 1, minWidth: "110px",
-                    padding: "8px 10px", borderRadius: "6px", cursor: isFounder ? "pointer" : "default",
+                    padding: "8px 10px", borderRadius: "2px", cursor: isFounder ? "pointer" : "default",
                     background: active ? `${dimColor}80` : "rgba(255,255,255,0.03)",
                     border: `1px solid ${active ? color : "rgba(255,255,255,0.08)"}`,
                     color: active ? color : "#555",
@@ -610,17 +610,17 @@ function TurretPolicyPanelInner({ vault }: { vault: TribeVaultState }) {
               disabled={secBusy || !isFounder}
               style={{
                 display: "flex", alignItems: "center", gap: "6px",
-                padding: "6px 12px", borderRadius: "20px", cursor: isFounder ? "pointer" : "default",
-                background: secConfig?.aggressionMode ? "rgba(255,160,50,0.12)" : "rgba(255,255,255,0.04)",
-                border: `1px solid ${secConfig?.aggressionMode ? "rgba(255,160,50,0.4)" : "rgba(255,255,255,0.1)"}`,
-                color: secConfig?.aggressionMode ? "#ffa032" : "#555",
+                padding: "6px 12px", borderRadius: "0", cursor: isFounder ? "pointer" : "default",
+                background: secConfig?.aggressionMode ? "rgba(255,71,0,0.12)" : "rgba(255,255,255,0.04)",
+                border: `1px solid ${secConfig?.aggressionMode ? "rgba(255,71,0,0.4)" : "rgba(255,255,255,0.1)"}`,
+                color: secConfig?.aggressionMode ? "#FF4700" : "#555",
                 fontSize: "11px", fontWeight: 600,
               }}
             >
               <span style={{ fontSize: "14px" }}>{secConfig?.aggressionMode ? "⚡" : "○"}</span>
               AGGRESSION DETECT
             </button>
-            <span style={{ color: "#444", fontSize: "11px" }}>
+            <span style={{ color: "rgba(107,107,94,0.7)", fontSize: "11px" }}>
               {secConfig?.aggressionMode
                 ? "Turrets observe first — arm only after hostile contact logged"
                 : "Turrets arm immediately based on security level"}
@@ -632,16 +632,16 @@ function TurretPolicyPanelInner({ vault }: { vault: TribeVaultState }) {
 
       {/* Tribe relations grid */}
       <div style={{
-        background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,160,50,0.12)",
-        borderRadius: "8px", padding: "14px", marginBottom: "20px",
+        background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,71,0,0.12)",
+        borderRadius: "0", padding: "14px", marginBottom: "20px",
       }}>
-        <div style={{ color: "#ffa032", fontWeight: 600, fontSize: "13px", marginBottom: "12px" }}>
+        <div style={{ color: "#FF4700", fontWeight: 600, fontSize: "13px", marginBottom: "12px" }}>
           Tribe Relations
-          {!isFounder && <span style={{ color: "#555", fontWeight: 400, marginLeft: "8px", fontSize: "11px" }}>read-only</span>}
+          {!isFounder && <span style={{ color: "rgba(107,107,94,0.55)", fontWeight: 400, marginLeft: "8px", fontSize: "11px" }}>read-only</span>}
         </div>
 
         {otherTribes.length === 0 ? (
-          <div style={{ color: "#555", fontSize: "12px" }}>No other tribes found on-chain yet.</div>
+          <div style={{ color: "rgba(107,107,94,0.55)", fontSize: "12px" }}>No other tribes found on-chain yet.</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             {otherTribes.map(tribe => {
@@ -651,9 +651,9 @@ function TurretPolicyPanelInner({ vault }: { vault: TribeVaultState }) {
                 <div key={tribe.tribeId} style={{
                   display: "flex", alignItems: "center", gap: "10px",
                   padding: "8px 12px",
-                  background: isFriendly ? "rgba(0,255,150,0.04)" : "rgba(255,100,50,0.04)",
-                  border: `1px solid ${isFriendly ? "rgba(0,255,150,0.15)" : "rgba(255,100,50,0.15)"}`,
-                  borderRadius: "6px",
+                  background: isFriendly ? "rgba(0,255,150,0.04)" : "rgba(255,71,0,0.04)",
+                  border: `1px solid ${isFriendly ? "rgba(0,255,150,0.15)" : "rgba(255,71,0,0.15)"}`,
+                  borderRadius: "2px",
                 }}>
                   <span style={{
                     fontSize: "12px", fontWeight: 700,
@@ -662,10 +662,10 @@ function TurretPolicyPanelInner({ vault }: { vault: TribeVaultState }) {
                   }}>
                     {tribe.coinSymbol}
                   </span>
-                  <span style={{ color: "#555", fontSize: "11px", fontFamily: "monospace", flex: 1 }}>
+                  <span style={{ color: "rgba(107,107,94,0.55)", fontSize: "11px", fontFamily: "monospace", flex: 1 }}>
                     tribe #{tribe.tribeId}
                     {WELL_KNOWN_TRIBES.find(w => w.tribeId === tribe.tribeId)?.label && (
-                      <span style={{ color: "#444", marginLeft: "6px", fontFamily: "sans-serif" }}>
+                      <span style={{ color: "rgba(107,107,94,0.7)", marginLeft: "6px", fontFamily: "sans-serif" }}>
                         ({WELL_KNOWN_TRIBES.find(w => w.tribeId === tribe.tribeId)!.label})
                       </span>
                     )}
@@ -677,16 +677,16 @@ function TurretPolicyPanelInner({ vault }: { vault: TribeVaultState }) {
                     {isFriendly ? "● FRIENDLY" : "● HOSTILE"}
                   </span>
                   {hasDraftChange && (
-                    <span style={{ fontSize: "10px", color: "#ffa032" }}>unsaved</span>
+                    <span style={{ fontSize: "10px", color: "#FF4700" }}>unsaved</span>
                   )}
                   {isFounder && (
                     <button
                       onClick={() => toggleDraft(tribe.tribeId)}
                       style={{
-                        background: isFriendly ? "rgba(255,100,50,0.1)" : "rgba(0,255,150,0.1)",
-                        border: `1px solid ${isFriendly ? "rgba(255,100,50,0.3)" : "#00ff9640"}`,
+                        background: isFriendly ? "rgba(255,71,0,0.1)" : "rgba(0,255,150,0.1)",
+                        border: `1px solid ${isFriendly ? "rgba(255,71,0,0.3)" : "#00ff9640"}`,
                         color: isFriendly ? "#ff6432" : "#00ff96",
-                        borderRadius: "4px", fontSize: "11px", padding: "3px 10px", cursor: "pointer",
+                        borderRadius: "0", fontSize: "11px", padding: "3px 10px", cursor: "pointer",
                       }}
                     >
                       {isFriendly ? "Set Hostile" : "Set Friendly"}
@@ -712,7 +712,7 @@ function TurretPolicyPanelInner({ vault }: { vault: TribeVaultState }) {
               onClick={() => setDraft(new Map())}
               style={{
                 background: "transparent", border: "1px solid rgba(255,255,255,0.1)",
-                color: "#555", borderRadius: "4px", fontSize: "11px", padding: "5px 12px", cursor: "pointer",
+                color: "rgba(107,107,94,0.55)", borderRadius: "0", fontSize: "11px", padding: "5px 12px", cursor: "pointer",
               }}
             >
               Discard
@@ -730,7 +730,7 @@ function TurretPolicyPanelInner({ vault }: { vault: TribeVaultState }) {
               placeholder="Add tribe ID (e.g. 1000167)"
               style={{
                 width: "200px", background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.1)", borderRadius: "4px",
+                border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0",
                 color: "#aaa", fontSize: "11px", padding: "5px 8px", outline: "none",
                 fontFamily: "monospace",
               }}
@@ -745,7 +745,7 @@ function TurretPolicyPanelInner({ vault }: { vault: TribeVaultState }) {
               disabled={!addTribeInput}
               style={{
                 background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
-                color: "#888", borderRadius: "4px", fontSize: "11px", padding: "5px 12px", cursor: "pointer",
+                color: "#888", borderRadius: "0", fontSize: "11px", padding: "5px 12px", cursor: "pointer",
               }}
             >
               + Add Tribe
@@ -757,7 +757,7 @@ function TurretPolicyPanelInner({ vault }: { vault: TribeVaultState }) {
       {/* Passage intel log */}
       <div style={{
         background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: "8px", padding: "14px", marginBottom: "20px",
+        borderRadius: "0", padding: "14px", marginBottom: "20px",
       }}>
         <div style={{ color: "#aaa", fontWeight: 600, fontSize: "13px", marginBottom: "12px" }}>
           📡 Passage Intel Log
@@ -767,38 +767,38 @@ function TurretPolicyPanelInner({ vault }: { vault: TribeVaultState }) {
         {logId && (
           <div style={{ marginBottom: "14px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-end" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-              <span style={{ color: "#555", fontSize: "10px" }}>TURRET ID</span>
+              <span style={{ color: "rgba(107,107,94,0.55)", fontSize: "10px" }}>TURRET ID</span>
               <input
                 value={logTurret}
                 onChange={e => setLogTurret(e.target.value)}
                 placeholder="0x..."
                 style={{
                   width: "140px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: "4px", color: "#fff", fontSize: "11px", padding: "5px 8px", outline: "none",
+                  borderRadius: "0", color: "#fff", fontSize: "11px", padding: "5px 8px", outline: "none",
                 }}
               />
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-              <span style={{ color: "#555", fontSize: "10px" }}>ENTITY ID (observed)</span>
+              <span style={{ color: "rgba(107,107,94,0.55)", fontSize: "10px" }}>ENTITY ID (observed)</span>
               <input
                 value={logEntity}
                 onChange={e => setLogEntity(e.target.value)}
                 placeholder="0x..."
                 style={{
                   width: "140px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: "4px", color: "#fff", fontSize: "11px", padding: "5px 8px", outline: "none",
+                  borderRadius: "0", color: "#fff", fontSize: "11px", padding: "5px 8px", outline: "none",
                 }}
               />
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-              <span style={{ color: "#555", fontSize: "10px" }}>NOTE</span>
+              <span style={{ color: "rgba(107,107,94,0.55)", fontSize: "10px" }}>NOTE</span>
               <input
                 value={logNote}
                 onChange={e => setLogNote(e.target.value)}
                 placeholder="hostile capital..."
                 style={{
                   width: "160px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: "4px", color: "#fff", fontSize: "11px", padding: "5px 8px", outline: "none",
+                  borderRadius: "0", color: "#fff", fontSize: "11px", padding: "5px 8px", outline: "none",
                 }}
               />
             </div>
@@ -807,7 +807,7 @@ function TurretPolicyPanelInner({ vault }: { vault: TribeVaultState }) {
               disabled={logBusy || !logTurret || !logEntity}
               style={{
                 background: "rgba(100,180,255,0.1)", border: "1px solid rgba(100,180,255,0.3)",
-                color: "#64b4ff", borderRadius: "4px", fontSize: "12px", padding: "5px 14px", cursor: "pointer",
+                color: "#64b4ff", borderRadius: "0", fontSize: "12px", padding: "5px 14px", cursor: "pointer",
               }}
             >
               {logBusy ? "…" : "Log Entry"}
@@ -818,12 +818,12 @@ function TurretPolicyPanelInner({ vault }: { vault: TribeVaultState }) {
 
         {/* Intel feed */}
         {(passages ?? []).length === 0 ? (
-          <div style={{ color: "#555", fontSize: "12px" }}>No passage events logged yet.</div>
+          <div style={{ color: "rgba(107,107,94,0.55)", fontSize: "12px" }}>No passage events logged yet.</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
             <div style={{ display: "flex", gap: "8px", padding: "4px 0", borderBottom: "1px solid rgba(255,255,255,0.06)", marginBottom: "4px" }}>
               {["#", "TURRET", "ENTITY", "NOTE", "REPORTER", "TIME"].map(h => (
-                <span key={h} style={{ color: "#444", fontSize: "10px", letterSpacing: "0.06em", flex: h === "NOTE" ? 2 : 1 }}>{h}</span>
+                <span key={h} style={{ color: "rgba(107,107,94,0.7)", fontSize: "10px", letterSpacing: "0.06em", flex: h === "NOTE" ? 2 : 1 }}>{h}</span>
               ))}
             </div>
             {(passages ?? []).map(ev => (
@@ -831,12 +831,12 @@ function TurretPolicyPanelInner({ vault }: { vault: TribeVaultState }) {
                 display: "flex", gap: "8px", fontSize: "11px", color: "#888",
                 padding: "4px 0", borderBottom: "1px solid rgba(255,255,255,0.03)",
               }}>
-                <span style={{ flex: 1, color: "#555" }}>#{ev.entryIndex}</span>
+                <span style={{ flex: 1, color: "rgba(107,107,94,0.55)" }}>#{ev.entryIndex}</span>
                 <span style={{ flex: 1, fontFamily: "monospace" }}>{shortAddr(ev.turretId)}</span>
-                <span style={{ flex: 1, fontFamily: "monospace", color: "#ffa032" }}>{shortAddr(ev.entityId)}</span>
+                <span style={{ flex: 1, fontFamily: "monospace", color: "#FF4700" }}>{shortAddr(ev.entityId)}</span>
                 <span style={{ flex: 2, color: "#aaa" }}>{ev.note || "—"}</span>
                 <span style={{ flex: 1, fontFamily: "monospace" }}>{shortAddr(ev.reporter)}</span>
-                <span style={{ flex: 1, color: "#555" }}>
+                <span style={{ flex: 1, color: "rgba(107,107,94,0.55)" }}>
                   {ev.timestampMs ? new Date(ev.timestampMs).toLocaleTimeString() : "—"}
                 </span>
               </div>

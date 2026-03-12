@@ -55,16 +55,16 @@ function shortAddr(addr: string): string {
 function StatBox({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div style={{
-      background: "rgba(255,160,50,0.06)",
-      border: "1px solid rgba(255,160,50,0.18)",
-      borderRadius: "8px",
+      background: "#131313",
+      border: "1px solid rgba(255,71,0,0.18)",
+      borderRadius: "0",
       padding: "14px 18px",
       minWidth: "140px",
       flex: 1,
     }}>
       <div style={{ color: "#888", fontSize: "11px", letterSpacing: "0.06em", marginBottom: "4px" }}>{label}</div>
-      <div style={{ color: "#ffa032", fontSize: "22px", fontWeight: 700 }}>{value}</div>
-      {sub && <div style={{ color: "#666", fontSize: "10px", marginTop: "2px" }}>{sub}</div>}
+      <div style={{ color: "#FF4700", fontSize: "22px", fontWeight: 700 }}>{value}</div>
+      {sub && <div style={{ color: "rgba(107,107,94,0.6)", fontSize: "10px", marginTop: "2px" }}>{sub}</div>}
     </div>
   );
 }
@@ -86,8 +86,8 @@ function ActivityRow({ item }: { item: TreasuryActivity }) {
       <span style={{ color: isDeposit ? "#00ff96" : "#ff9632", fontWeight: 600, minWidth: "80px" }}>
         {isDeposit ? "+" : "−"}{item.amount.toFixed(4)} SUI
       </span>
-      <span style={{ color: "#666" }}>{shortAddr(item.actor)}</span>
-      <span style={{ marginLeft: "auto", color: "#555" }}>
+      <span style={{ color: "rgba(107,107,94,0.6)" }}>{shortAddr(item.actor)}</span>
+      <span style={{ marginLeft: "auto", color: "rgba(107,107,94,0.55)" }}>
         {new Date(item.timestampMs).toLocaleTimeString()}
       </span>
     </div>
@@ -134,13 +134,13 @@ function CorpSetupForm({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <div className="card" style={{ maxWidth: "440px" }}>
-      <h3 style={{ color: "#ffa032", marginBottom: "8px" }}>⚓ Found Corporation</h3>
+      <h3 style={{ color: "#FF4700", marginBottom: "8px" }}>⚓ Found Corporation</h3>
       <p style={{ color: "#888", fontSize: "13px", marginBottom: "16px" }}>
-        No corporation found. Initialize your corp + treasury in one transaction.
+        No tribe found. Initialize your tribe + treasury in one transaction.
       </p>
 
       {tribeLoading ? (
-        <div style={{ color: "#666", fontSize: "13px", marginBottom: "16px" }}>
+        <div style={{ color: "rgba(107,107,94,0.6)", fontSize: "13px", marginBottom: "16px" }}>
           Reading character tribe from chain…
         </div>
       ) : tribeId == null ? (
@@ -149,17 +149,17 @@ function CorpSetupForm({ onSuccess }: { onSuccess: () => void }) {
         </div>
       ) : (
         <div style={{
-          background: "rgba(255,160,50,0.08)",
-          border: "1px solid rgba(255,160,50,0.25)",
-          borderRadius: "6px",
+          background: "#161616",
+          border: "1px solid rgba(255,71,0,0.25)",
+          borderRadius: "2px",
           padding: "10px 14px",
           marginBottom: "14px",
         }}>
-          <div style={{ color: "#888", fontSize: "11px", marginBottom: "2px" }}>CORP NAME (FROM TRIBE ID)</div>
-          <div style={{ color: "#ffa032", fontSize: "16px", fontWeight: 700, fontFamily: "monospace" }}>
+          <div style={{ color: "#888", fontSize: "11px", marginBottom: "2px" }}>TRIBE NAME (FROM TRIBE ID)</div>
+          <div style={{ color: "#FF4700", fontSize: "16px", fontWeight: 700, fontFamily: "monospace" }}>
             {corpName}
           </div>
-          <div style={{ color: "#555", fontSize: "10px", marginTop: "3px" }}>tribe_id {tribeId} · read from Character on-chain</div>
+          <div style={{ color: "rgba(107,107,94,0.55)", fontSize: "10px", marginTop: "3px" }}>tribe_id {tribeId} · read from Character on-chain</div>
         </div>
       )}
 
@@ -169,7 +169,7 @@ function CorpSetupForm({ onSuccess }: { onSuccess: () => void }) {
         disabled={busy || !corpName || !account}
         style={{ width: "100%", padding: "10px" }}
       >
-        {busy ? "Initializing…" : "Found Corp + Create Treasury"}
+        {busy ? "Initializing…" : "Found Tribe + Create Treasury"}
       </button>
       {err && <div style={{ color: "#ff6432", fontSize: "11px", marginTop: "8px" }}>⚠ {err}</div>}
     </div>
@@ -182,9 +182,9 @@ function TreasuryConnectForm({ corpId, onConnect }: { corpId: string; onConnect:
   const [value, setValue] = useState("");
   return (
     <div className="card" style={{ maxWidth: "440px" }}>
-      <h3 style={{ color: "#ffa032", marginBottom: "8px" }}>🔗 Connect Treasury</h3>
+      <h3 style={{ color: "#FF4700", marginBottom: "8px" }}>🔗 Connect Treasury</h3>
       <p style={{ color: "#888", fontSize: "13px", marginBottom: "12px" }}>
-        Corp found. Enter the Treasury object ID (from init tx effects).
+        Tribe found. Enter the Treasury object ID (from init tx effects).
       </p>
       <input
         value={value}
@@ -192,10 +192,10 @@ function TreasuryConnectForm({ corpId, onConnect }: { corpId: string; onConnect:
         placeholder="0x… treasury object ID"
         style={{
           width: "100%",
-          background: "rgba(255,160,50,0.08)",
-          border: "1px solid rgba(255,160,50,0.35)",
-          borderRadius: "6px",
-          color: "#ffa032",
+          background: "#161616",
+          border: "1px solid rgba(255,71,0,0.35)",
+          borderRadius: "2px",
+          color: "#FF4700",
           fontSize: "12px",
           padding: "9px 12px",
           outline: "none",
@@ -269,20 +269,20 @@ function TreasuryDashboard({
 
   return (
     <div>
-      {/* Corp header */}
+      {/* Tribe header */}
       <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
         <div>
-          <div style={{ color: "#ffa032", fontWeight: 700, fontSize: "18px" }}>
-            ⚓ {corp.name}
+          <div style={{ color: "#FF4700", fontWeight: 700, fontSize: "18px" }}>
+            {corp.name}
           </div>
-          <div style={{ color: "#666", fontSize: "12px" }}>
-            {corp.memberCount} member{corp.memberCount !== 1 ? "s" : ""} · Founded by {shortAddr(corp.founder)} · Your role: <span style={{ color: "#ffa032" }}>{roleLabel(cap.role)}</span>
+          <div style={{ color: "rgba(107,107,94,0.6)", fontSize: "12px" }}>
+            {corp.memberCount} member{corp.memberCount !== 1 ? "s" : ""} · Founder: {shortAddr(corp.founder)} · Role: <span style={{ color: "#FF4700" }}>{roleLabel(cap.role)}</span>
           </div>
         </div>
         <div style={{ marginLeft: "auto" }}>
           <span style={{
-            padding: "3px 10px", borderRadius: "12px", fontSize: "11px", fontWeight: 700,
-            background: corp.active ? "rgba(0,255,150,0.1)" : "rgba(255,100,50,0.1)",
+            padding: "3px 10px", borderRadius: "0", fontSize: "11px", fontWeight: 700,
+            background: corp.active ? "rgba(0,255,150,0.1)" : "rgba(255,71,0,0.1)",
             color: corp.active ? "#00ff96" : "#ff6432",
             border: `1px solid ${corp.active ? "#00ff9640" : "#ff643240"}`,
           }}>
@@ -305,7 +305,7 @@ function TreasuryDashboard({
           flex: 1, minWidth: "200px",
           background: "rgba(255,255,255,0.03)",
           border: "1px solid rgba(0,255,150,0.15)",
-          borderRadius: "8px",
+          borderRadius: "0",
           padding: "14px",
         }}>
           <div style={{ color: "#00ff96", fontWeight: 600, marginBottom: "10px", fontSize: "13px" }}>▲ Deposit SUI</div>
@@ -335,12 +335,12 @@ function TreasuryDashboard({
           flex: 1, minWidth: "200px",
           background: "rgba(255,255,255,0.03)",
           border: `1px solid ${isDirector ? "rgba(255,150,50,0.2)" : "rgba(255,255,255,0.06)"}`,
-          borderRadius: "8px",
+          borderRadius: "0",
           padding: "14px",
           opacity: isDirector ? 1 : 0.4,
         }}>
           <div style={{ color: "#ff9632", fontWeight: 600, marginBottom: "10px", fontSize: "13px" }}>
-            ▼ Withdraw SUI {!isDirector && <span style={{ color: "#555", fontWeight: 400 }}>(Director only)</span>}
+            ▼ Withdraw SUI {!isDirector && <span style={{ color: "rgba(107,107,94,0.55)", fontWeight: 400 }}>(Director only)</span>}
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
             <input
@@ -373,7 +373,7 @@ function TreasuryDashboard({
           RECENT ACTIVITY
         </div>
         {!activity?.length ? (
-          <div style={{ color: "#555", fontSize: "12px" }}>No transactions yet</div>
+          <div style={{ color: "rgba(107,107,94,0.55)", fontSize: "12px" }}>No transactions yet</div>
         ) : (
           activity.slice(0, 10).map((item, i) => <ActivityRow key={i} item={item} />)
         )}
@@ -421,7 +421,7 @@ export function TreasuryPanel({ onTxSuccess }: Props) {
   if (!account) {
     return (
       <div className="card" style={{ textAlign: "center", padding: "32px", color: "#888" }}>
-        Connect EVE Vault to manage your corp treasury
+        Connect EVE Vault to manage your tribe treasury
       </div>
     );
   }
@@ -429,7 +429,7 @@ export function TreasuryPanel({ onTxSuccess }: Props) {
   if (isLoading) {
     return (
       <div className="card" style={{ textAlign: "center", padding: "32px", color: "#888" }}>
-        Loading corp state…
+        Loading tribe state…
       </div>
     );
   }
@@ -442,12 +442,12 @@ export function TreasuryPanel({ onTxSuccess }: Props) {
     );
   }
 
-  // No MemberCap → no corp → show setup
+  // No MemberCap → no tribe → show setup
   if (!data?.cap) {
     return <CorpSetupForm onSuccess={handleRefresh} />;
   }
 
-  // Corp found but no Treasury ID yet
+  // Tribe found but no Treasury ID yet
   if (!data?.treasury) {
     return (
       <TreasuryConnectForm

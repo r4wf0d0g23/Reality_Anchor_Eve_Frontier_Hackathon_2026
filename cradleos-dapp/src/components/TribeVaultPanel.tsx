@@ -139,16 +139,16 @@ function shortAddr(addr: string): string {
 function StatBox({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div style={{
-      background: "rgba(255,160,50,0.06)",
-      border: "1px solid rgba(255,160,50,0.18)",
-      borderRadius: "8px",
+      background: "#131313",
+      border: "1px solid rgba(255,71,0,0.18)",
+      borderRadius: "0",
       padding: "14px 18px",
       minWidth: "130px",
       flex: 1,
     }}>
       <div style={{ color: "#888", fontSize: "11px", letterSpacing: "0.06em", marginBottom: "4px" }}>{label}</div>
-      <div style={{ color: "#ffa032", fontSize: "20px", fontWeight: 700 }}>{value}</div>
-      {sub && <div style={{ color: "#666", fontSize: "10px", marginTop: "2px" }}>{sub}</div>}
+      <div style={{ color: "#FF4700", fontSize: "20px", fontWeight: 700 }}>{value}</div>
+      {sub && <div style={{ color: "rgba(107,107,94,0.6)", fontSize: "10px", marginTop: "2px" }}>{sub}</div>}
     </div>
   );
 }
@@ -166,12 +166,12 @@ function EventRow({ ev }: { ev: CoinIssuedEvent }) {
           <span style={{ color: "#888", fontFamily: "monospace", fontSize: "11px" }}>
             {shortAddr(ev.recipient)}
           </span>
-          <span style={{ marginLeft: "auto", color: "#555" }}>
+          <span style={{ marginLeft: "auto", color: "rgba(107,107,94,0.55)" }}>
             {new Date(ev.timestampMs).toLocaleTimeString()}
           </span>
         </div>
         {ev.reason && (
-          <div style={{ color: "#666", fontSize: "11px", marginTop: "2px" }}>
+          <div style={{ color: "rgba(107,107,94,0.6)", fontSize: "11px", marginTop: "2px" }}>
             "{ev.reason}"
           </div>
         )}
@@ -281,10 +281,10 @@ function LaunchCoinForm({ onSuccess }: { onSuccess: () => void }) {
   };
 
   const inputStyle: React.CSSProperties = {
-    background: "rgba(255,160,50,0.08)",
-    border: "1px solid rgba(255,160,50,0.30)",
-    borderRadius: "6px",
-    color: "#ffa032",
+    background: "#161616",
+    border: "1px solid rgba(255,71,0,0.30)",
+    borderRadius: "2px",
+    color: "#FF4700",
     fontSize: "14px",
     padding: "9px 12px",
     outline: "none",
@@ -294,7 +294,7 @@ function LaunchCoinForm({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <div className="card" style={{ maxWidth: "460px" }}>
-      <h3 style={{ color: "#ffa032", marginBottom: "4px" }}>⚓ Launch Tribe Coin</h3>
+      <h3 style={{ color: "#FF4700", marginBottom: "4px" }}>⚓ Launch Tribe Coin</h3>
       <p style={{ color: "#888", fontSize: "13px", marginBottom: "18px" }}>
         Create an on-chain cryptocurrency for your tribe. Register a claim first, then launch.
         The claim proves tribe membership and prevents vault squatting.
@@ -302,7 +302,7 @@ function LaunchCoinForm({ onSuccess }: { onSuccess: () => void }) {
 
       {/* Tribe ID display */}
       {tribeLoading ? (
-        <div style={{ color: "#666", fontSize: "13px", marginBottom: "14px" }}>
+        <div style={{ color: "rgba(107,107,94,0.6)", fontSize: "13px", marginBottom: "14px" }}>
           Reading tribe from chain…
         </div>
       ) : tribeId == null ? (
@@ -313,7 +313,7 @@ function LaunchCoinForm({ onSuccess }: { onSuccess: () => void }) {
         <div style={{
           background: "rgba(255,255,255,0.03)",
           border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: "6px",
+          borderRadius: "2px",
           padding: "10px 14px",
           marginBottom: "16px",
           display: "flex",
@@ -321,10 +321,10 @@ function LaunchCoinForm({ onSuccess }: { onSuccess: () => void }) {
           gap: "12px",
         }}>
           <div>
-            <div style={{ color: "#555", fontSize: "10px", letterSpacing: "0.06em" }}>TRIBE</div>
-            <div style={{ color: "#ffa032", fontWeight: 700, fontFamily: "monospace" }}>{tribeId}</div>
+            <div style={{ color: "rgba(107,107,94,0.55)", fontSize: "10px", letterSpacing: "0.06em" }}>TRIBE</div>
+            <div style={{ color: "#FF4700", fontWeight: 700, fontFamily: "monospace" }}>{tribeId}</div>
           </div>
-          <div style={{ color: "#444", fontSize: "18px" }}>→</div>
+          <div style={{ color: "rgba(107,107,94,0.7)", fontSize: "18px" }}>→</div>
           <div style={{ color: "#888", fontSize: "12px" }}>
             Coin will be bound to this tribe permanently
           </div>
@@ -333,7 +333,7 @@ function LaunchCoinForm({ onSuccess }: { onSuccess: () => void }) {
 
       <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
         <div style={{ flex: 2 }}>
-          <div style={{ color: "#666", fontSize: "11px", marginBottom: "4px" }}>COIN NAME</div>
+          <div style={{ color: "rgba(107,107,94,0.6)", fontSize: "11px", marginBottom: "4px" }}>COIN NAME</div>
           <input
             value={coinName}
             onChange={e => setCoinName(e.target.value)}
@@ -342,7 +342,7 @@ function LaunchCoinForm({ onSuccess }: { onSuccess: () => void }) {
           />
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ color: "#666", fontSize: "11px", marginBottom: "4px" }}>SYMBOL</div>
+          <div style={{ color: "rgba(107,107,94,0.6)", fontSize: "11px", marginBottom: "4px" }}>SYMBOL</div>
           <input
             value={coinSymbol}
             onChange={e => setCoinSymbol(e.target.value.toUpperCase().slice(0, 8))}
@@ -356,13 +356,13 @@ function LaunchCoinForm({ onSuccess }: { onSuccess: () => void }) {
       {tribeId != null && (
         <div style={{
           marginBottom: "14px", padding: "12px 14px",
-          background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "8px",
+          background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "0",
         }}>
-          <div style={{ color: "#555", fontSize: "10px", letterSpacing: "0.06em", marginBottom: "6px" }}>
+          <div style={{ color: "rgba(107,107,94,0.55)", fontSize: "10px", letterSpacing: "0.06em", marginBottom: "6px" }}>
             CLAIM STATUS
           </div>
           {claimLoading ? (
-            <div style={{ color: "#555", fontSize: "12px" }}>Checking registry…</div>
+            <div style={{ color: "rgba(107,107,94,0.55)", fontSize: "12px" }}>Checking registry…</div>
           ) : !claim ? (
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <div style={{ color: "#ff6432", fontSize: "12px", flex: 1 }}>
@@ -372,8 +372,8 @@ function LaunchCoinForm({ onSuccess }: { onSuccess: () => void }) {
                 onClick={handleRegisterClaim}
                 disabled={claimBusy || !characterId}
                 style={{
-                  background: "rgba(255,160,50,0.1)", border: "1px solid rgba(255,160,50,0.3)",
-                  color: "#ffa032", borderRadius: "4px", fontSize: "11px", padding: "5px 12px", cursor: "pointer",
+                  background: "rgba(255,71,0,0.1)", border: "1px solid rgba(255,71,0,0.3)",
+                  color: "#FF4700", borderRadius: "0", fontSize: "11px", padding: "5px 12px", cursor: "pointer",
                   flexShrink: 0,
                 }}
               >
@@ -407,9 +407,9 @@ function LaunchCoinForm({ onSuccess }: { onSuccess: () => void }) {
       {txSent && (
         <div style={{
           marginTop: "16px", padding: "14px",
-          background: "rgba(255,160,50,0.06)", border: "1px solid rgba(255,160,50,0.25)", borderRadius: "8px",
+          background: "#131313", border: "1px solid rgba(255,71,0,0.25)", borderRadius: "0",
         }}>
-          <div style={{ color: "#ffa032", fontWeight: 600, fontSize: "13px", marginBottom: "6px" }}>
+          <div style={{ color: "#FF4700", fontWeight: 600, fontSize: "13px", marginBottom: "6px" }}>
             ✓ Transaction sent — looking up vault…
           </div>
           <div style={{ color: "#888", fontSize: "12px", marginBottom: "10px" }}>
@@ -421,9 +421,9 @@ function LaunchCoinForm({ onSuccess }: { onSuccess: () => void }) {
             onChange={e => setPasteId(e.target.value.trim())}
             placeholder="0x… TribeVault object ID"
             style={{
-              width: "100%", background: "rgba(255,160,50,0.08)",
-              border: "1px solid rgba(255,160,50,0.30)", borderRadius: "6px",
-              color: "#ffa032", fontSize: "12px", padding: "8px 10px",
+              width: "100%", background: "#161616",
+              border: "1px solid rgba(255,71,0,0.30)", borderRadius: "2px",
+              color: "#FF4700", fontSize: "12px", padding: "8px 10px",
               outline: "none", boxSizing: "border-box", fontFamily: "monospace",
               marginBottom: "8px",
             }}
@@ -453,7 +453,7 @@ function ConnectVaultForm({ tribeId, onConnect }: { tribeId: number; onConnect: 
   const [value, setValue] = useState("");
   return (
     <div className="card" style={{ maxWidth: "460px" }}>
-      <h3 style={{ color: "#ffa032", marginBottom: "8px" }}>🔗 Connect Tribe Vault</h3>
+      <h3 style={{ color: "#FF4700", marginBottom: "8px" }}>🔗 Connect Tribe Vault</h3>
       <p style={{ color: "#888", fontSize: "13px", marginBottom: "12px" }}>
         Vault launched. Enter the TribeVault object ID (from the launch tx in Sui explorer).
       </p>
@@ -462,9 +462,9 @@ function ConnectVaultForm({ tribeId, onConnect }: { tribeId: number; onConnect: 
         onChange={e => setValue(e.target.value)}
         placeholder="0x… vault object ID"
         style={{
-          width: "100%", background: "rgba(255,160,50,0.08)",
-          border: "1px solid rgba(255,160,50,0.30)", borderRadius: "6px",
-          color: "#ffa032", fontSize: "12px", padding: "9px 12px",
+          width: "100%", background: "#161616",
+          border: "1px solid rgba(255,71,0,0.30)", borderRadius: "2px",
+          color: "#FF4700", fontSize: "12px", padding: "9px 12px",
           outline: "none", marginBottom: "10px", boxSizing: "border-box",
           fontFamily: "monospace",
         }}
@@ -624,27 +624,27 @@ function VaultDashboard({
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "20px" }}>
         <div>
-          <div style={{ color: "#ffa032", fontWeight: 700, fontSize: "22px", letterSpacing: "0.04em" }}>
+          <div style={{ color: "#FF4700", fontWeight: 700, fontSize: "22px", letterSpacing: "0.04em" }}>
             {vault.coinName}
             <span style={{
               marginLeft: "10px", fontSize: "13px", fontFamily: "monospace",
-              background: "rgba(255,160,50,0.12)", border: "1px solid rgba(255,160,50,0.3)",
-              borderRadius: "4px", padding: "2px 8px", color: "#ffa032",
+              background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,71,0,0.3)",
+              borderRadius: "0", padding: "2px 8px", color: "#FF4700",
             }}>
               {vault.coinSymbol}
             </span>
           </div>
-          <div style={{ color: "#666", fontSize: "12px", marginTop: "2px" }}>
+          <div style={{ color: "rgba(107,107,94,0.6)", fontSize: "12px", marginTop: "2px" }}>
             {tribeInfo ? (
               <span title={tribeInfo.description || undefined}>
                 {tribeInfo.name}
-                <span style={{ color: "#555", marginLeft: "6px" }}>({tribeInfo.nameShort})</span>
+                <span style={{ color: "rgba(107,107,94,0.55)", marginLeft: "6px" }}>({tribeInfo.nameShort})</span>
               </span>
             ) : (
               <span>Tribe {vault.tribeId}</span>
             )}
             {" · "}Founded by {shortAddr(vault.founder)}
-            {isFounder && <span style={{ color: "#ffa032", marginLeft: "8px" }}>● You are the founder</span>}
+            {isFounder && <span style={{ color: "#FF4700", marginLeft: "8px" }}>● You are the founder</span>}
           </div>
         </div>
       </div>
@@ -677,10 +677,10 @@ function VaultDashboard({
       <div style={{
         background: "rgba(255,255,255,0.02)",
         border: "1px solid rgba(255,255,255,0.07)",
-        borderRadius: "8px", padding: "10px 14px", marginBottom: "16px",
+        borderRadius: "0", padding: "10px 14px", marginBottom: "16px",
         display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap",
       }}>
-        <span style={{ color: "#666", fontSize: "11px", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>
+        <span style={{ color: "rgba(107,107,94,0.6)", fontSize: "11px", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>
           TOKEN CONTRACT
         </span>
         <span style={{
@@ -694,7 +694,7 @@ function VaultDashboard({
           title="Copy vault address"
           style={{
             background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: "4px", color: "#888", fontSize: "11px",
+            borderRadius: "0", color: "#888", fontSize: "11px",
             padding: "2px 8px", cursor: "pointer", whiteSpace: "nowrap",
           }}
         >
@@ -704,7 +704,7 @@ function VaultDashboard({
           href={`https://suiscan.xyz/testnet/object/${vault.objectId}`}
           target="_blank"
           rel="noreferrer"
-          style={{ color: "#555", fontSize: "11px", textDecoration: "none", whiteSpace: "nowrap" }}
+          style={{ color: "rgba(107,107,94,0.55)", fontSize: "11px", textDecoration: "none", whiteSpace: "nowrap" }}
         >
           Explorer ↗
         </a>
@@ -714,18 +714,18 @@ function VaultDashboard({
       {infraCredits > 0 && (
         <div style={{ marginBottom: "20px" }}>
           <div style={{
-            height: "6px", borderRadius: "3px",
+            height: "6px", borderRadius: "0",
             background: "rgba(255,255,255,0.07)", overflow: "hidden",
           }}>
             <div style={{
               height: "100%",
               width: `${cappedPct}%`,
-              background: cappedPct > 90 ? "#ff6432" : cappedPct > 70 ? "#ffa032" : "#00ff96",
+              background: cappedPct > 90 ? "#ff6432" : cappedPct > 70 ? "#FF4700" : "#00ff96",
               transition: "width 0.4s ease",
-              borderRadius: "3px",
+              borderRadius: "0",
             }} />
           </div>
-          <div style={{ fontSize: "10px", color: "#555", marginTop: "3px" }}>
+          <div style={{ fontSize: "10px", color: "rgba(107,107,94,0.55)", marginTop: "3px" }}>
             {vault.totalSupply.toLocaleString()} / {infraCredits.toLocaleString()} {vault.coinSymbol} issued
           </div>
         </div>
@@ -735,10 +735,10 @@ function VaultDashboard({
       {isFounder && nonNodeStructures.length > 0 && (
         <div style={{
           background: "rgba(255,255,255,0.02)",
-          border: "1px solid rgba(255,160,50,0.12)",
-          borderRadius: "8px", padding: "14px", marginBottom: "20px",
+          border: "1px solid rgba(255,71,0,0.12)",
+          borderRadius: "0", padding: "14px", marginBottom: "20px",
         }}>
-          <div style={{ color: "#ffa032", fontWeight: 600, fontSize: "13px", marginBottom: "10px" }}>
+          <div style={{ color: "#FF4700", fontWeight: 600, fontSize: "13px", marginBottom: "10px" }}>
             🏗 Infra Backing — Register structures to unlock issuable supply
           </div>
           {infraErr && <div style={{ color: "#ff6432", fontSize: "11px", marginBottom: "8px" }}>⚠ {infraErr}</div>}
@@ -753,7 +753,7 @@ function VaultDashboard({
                   padding: "6px 10px",
                   background: isRegistered ? "rgba(0,255,150,0.04)" : "rgba(255,255,255,0.03)",
                   border: `1px solid ${isRegistered ? "rgba(0,255,150,0.15)" : "rgba(255,255,255,0.06)"}`,
-                  borderRadius: "6px",
+                  borderRadius: "2px",
                 }}>
                   <span style={{ color: "#888", fontSize: "11px", minWidth: "80px" }}>{s.kind}</span>
                   <span style={{ color: "#aaa", fontSize: "11px", fontFamily: "monospace", flex: 1 }}>
@@ -761,10 +761,10 @@ function VaultDashboard({
                   </span>
                   {s.energyCost && s.energyCost > 0 && (
                     <span style={{
-                      fontSize: "10px", color: "#ffa032",
-                      background: "rgba(255,160,50,0.08)",
-                      border: "1px solid rgba(255,160,50,0.2)",
-                      borderRadius: "4px", padding: "1px 5px",
+                      fontSize: "10px", color: "#FF4700",
+                      background: "#161616",
+                      border: "1px solid rgba(255,71,0,0.2)",
+                      borderRadius: "0", padding: "1px 5px",
                     }}>
                       ⚡{s.energyCost} → +{credits.toLocaleString()} CRDL
                     </span>
@@ -774,7 +774,7 @@ function VaultDashboard({
                       <span style={{
                         fontSize: "11px", color: "#00ff96",
                         background: "rgba(0,255,150,0.08)", border: "1px solid rgba(0,255,150,0.2)",
-                        borderRadius: "4px", padding: "3px 10px",
+                        borderRadius: "0", padding: "3px 10px",
                       }}>
                         ✓ Registered
                       </span>
@@ -782,8 +782,8 @@ function VaultDashboard({
                         onClick={() => handleDeregister(s)}
                         disabled={isBusy}
                         style={{
-                          background: "rgba(255,100,50,0.08)", border: "1px solid rgba(255,100,50,0.3)",
-                          color: "#ff8060", borderRadius: "4px",
+                          background: "#161616", border: "1px solid rgba(255,71,0,0.3)",
+                          color: "#ff8060", borderRadius: "0",
                           fontSize: "11px", padding: "3px 10px", cursor: "pointer",
                         }}
                       >
@@ -796,7 +796,7 @@ function VaultDashboard({
                       disabled={isBusy || !s.energyCost}
                       style={{
                         background: "rgba(0,255,150,0.1)", border: "1px solid #00ff9640",
-                        color: "#00ff96", borderRadius: "4px",
+                        color: "#00ff96", borderRadius: "0",
                         fontSize: "11px", padding: "3px 10px", cursor: "pointer",
                       }}
                     >
@@ -815,7 +815,7 @@ function VaultDashboard({
         <div style={{
           background: "rgba(255,255,255,0.03)",
           border: "1px solid rgba(0,255,150,0.15)",
-          borderRadius: "8px",
+          borderRadius: "0",
           padding: "16px",
           marginBottom: "20px",
         }}>
@@ -884,13 +884,13 @@ function VaultDashboard({
       <div style={{
         background: "rgba(255,255,255,0.02)",
         border: "1px solid rgba(100,180,255,0.12)",
-        borderRadius: "8px",
+        borderRadius: "0",
         padding: "14px",
         marginBottom: "20px",
       }}>
         <div style={{ color: "#64b4ff", fontWeight: 600, fontSize: "13px", marginBottom: "10px" }}>
           ↗ Transfer {vault.coinSymbol}
-          <span style={{ color: "#555", fontWeight: 400, fontSize: "11px", marginLeft: "8px" }}>
+          <span style={{ color: "rgba(107,107,94,0.55)", fontWeight: 400, fontSize: "11px", marginLeft: "8px" }}>
             your balance: {(myBalance ?? 0).toLocaleString()}
           </span>
         </div>
@@ -940,7 +940,7 @@ function VaultDashboard({
           ISSUANCE HISTORY
         </div>
         {!events?.length ? (
-          <div style={{ color: "#555", fontSize: "12px" }}>No coins issued yet</div>
+          <div style={{ color: "rgba(107,107,94,0.55)", fontSize: "12px" }}>No coins issued yet</div>
         ) : (
           events.slice(0, 15).map((ev, i) => <EventRow key={i} ev={ev} />)
         )}
@@ -962,10 +962,10 @@ function VaultWithDex({
 
   const tabStyle = (active: boolean): React.CSSProperties => ({
     padding: "6px 18px", fontSize: "12px", cursor: "pointer",
-    border: `1px solid ${active ? "#ffa032" : "rgba(255,160,50,0.2)"}`,
-    background: active ? "rgba(255,160,50,0.12)" : "transparent",
-    color: active ? "#ffa032" : "#666",
-    borderRadius: "20px", fontWeight: active ? 700 : 400,
+    border: `1px solid ${active ? "#FF4700" : "rgba(255,71,0,0.2)"}`,
+    background: active ? "rgba(255,71,0,0.12)" : "transparent",
+    color: active ? "#FF4700" : "#666",
+    borderRadius: "0", fontWeight: active ? 700 : 400,
     letterSpacing: "0.04em", textTransform: "uppercase" as const,
   });
 
@@ -1080,8 +1080,8 @@ export function TribeVaultPanel({ onTxSuccess }: Props) {
   const isStaleVault = !vault.registeredInfraTableId;
   if (isStaleVault) {
     return (
-      <div className="card" style={{ border: "1px solid rgba(255,160,50,0.4)", padding: "24px" }}>
-        <div style={{ color: "#ffa032", fontWeight: 700, marginBottom: "8px" }}>
+      <div className="card" style={{ border: "1px solid rgba(255,71,0,0.4)", padding: "24px" }}>
+        <div style={{ color: "#FF4700", fontWeight: 700, marginBottom: "8px" }}>
           ⚠ Vault upgrade required
         </div>
         <div style={{ color: "#888", fontSize: "13px", marginBottom: "16px" }}>

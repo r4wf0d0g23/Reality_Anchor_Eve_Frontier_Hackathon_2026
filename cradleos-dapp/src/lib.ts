@@ -51,9 +51,10 @@ export async function rpcGetObject(objectId: string): Promise<Record<string, unk
       params: [objectId, { showContent: true, showType: true, showOwner: true }],
     }),
   });
-  const json = await res.json() as { result: { data: { content: { fields: Record<string, unknown>; type: string }; type?: string; owner: unknown } } };
-  // `data.type` requires showType:true but may still be absent on some nodes; fall back to content.type
-  const objType = json.result.data.type ?? json.result.data.content.type ?? "";
+  const json = await res.json() as { result: { data: { content?: { fields?: Record<string, unknown>; type?: string } | null; type?: string; owner?: unknown } | null } };
+  // Object deleted/not found — return empty sentinel
+  if (!json.result?.data || !json.result.data.content?.fields) return { _deleted: true };
+  const objType = json.result.data.type ?? json.result.data.content?.type ?? "";
   return { ...json.result.data.content.fields, _type: objType, _owner: json.result.data.owner };
 }
 
@@ -146,7 +147,7 @@ function decodeMaybeAscii(value: unknown): string {
       return value.join(",");
     }
   }
-  return "Unknown Corp";
+  return "Unknown Tribe";
 }
 
 function extractCorpMetrics(fields: Record<string, unknown>, objectId: string): CorpOverviewData {
@@ -480,6 +481,8 @@ export async function fetchPlayerStructures(walletAddress: string): Promise<Loca
     Promise.all(
       capEntries.map(async ({ capId, structureId, kind, typeFull, label }) => {
         const fields = await rpcGetObject(structureId);
+        // Skip objects deleted on-chain (dismantled structures)
+        if (fields._deleted) return null;
 
         // Location hash
         const locFields = asRecord(readPath(fields, "location", "fields")) ?? {};
@@ -519,15 +522,16 @@ export async function fetchPlayerStructures(walletAddress: string): Promise<Loca
     ),
   ]);
 
-  // Attach energy costs
+  // Filter out deleted objects (dismantled), then attach energy costs
+  const validStructures = structureObjects.filter((s): s is PlayerStructure => s !== null);
   const energyCostMap = await fetchEnergyCostMap();
-  const structuresWithCost = structureObjects.map(s => ({
+  const structuresWithCost = validStructures.map(s => ({
     ...s,
     energyCost: s.typeId !== undefined ? (energyCostMap.get(s.typeId) ?? 0) : 0,
   }));
 
   // Attach solarSystemId from event map
-  const structures = structuresWithCost.map(s => ({
+  const structures = structuresWithCost.map((s: PlayerStructure & { energyCost: number }) => ({
     ...s,
     solarSystemId: locationMap.get(s.objectId),
   }));

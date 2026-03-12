@@ -16,14 +16,14 @@ export function CorpOverview() {
       <div className="panel-header">
         <div>
           <p className="eyebrow">Corporation Registry</p>
-          <h2>Corp Overview</h2>
+          <h2>Tribe Overview</h2>
         </div>
         <button className="ghost-button" onClick={() => refetch()} disabled={isLoading || isRefetching}>
           {isRefetching ? "Refreshing…" : "Refresh"}
         </button>
       </div>
 
-      {error ? <p className="error-text">Failed to load corp registry: {(error as Error).message}</p> : null}
+      {error ? <p className="error-text">Failed to load tribe registry: {(error as Error).message}</p> : null}
 
       {!data && !isLoading ? (
         <div className="empty-state">
@@ -33,7 +33,7 @@ export function CorpOverview() {
       ) : (
         <div className="stat-grid">
           <div className="stat-card">
-            <span className="stat-label">Corp Name</span>
+            <span className="stat-label">Tribe Name</span>
             <strong>{data?.name ?? "Loading…"}</strong>
           </div>
           <div className="stat-card">

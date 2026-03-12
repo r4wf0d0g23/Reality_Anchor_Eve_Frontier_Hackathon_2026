@@ -95,70 +95,96 @@ function App() {
 
   return (
     <main className="app-shell">
-      <header className="topbar hud-panel">
-        <div>
-          <p className="eyebrow">EVE Frontier × Sui Hackathon</p>
-          <h1>CradleOS Command Console</h1>
-          <p className="muted-text">Network node activation, corp telemetry, wallet-signed actions only.</p>
-        </div>
-
-        {connectError && (
-          <div style={{fontSize:'11px',color:'#ff6b6b',fontFamily:'monospace',marginBottom:'4px'}}>
-            ERR: {connectError}
-          </div>
-        )}
-        <div className="wallet-cluster">
-          <div className="wallet-readout">
-            <span className="stat-label">Wallet</span>
-            <strong>{account ? abbreviateAddress(account.address) : "DISCONNECTED"}</strong>
+      <header className="hud-panel" style={{
+        display: "flex", flexDirection: "column", alignItems: "center",
+        textAlign: "center", position: "relative", padding: "28px 24px 22px",
+        marginBottom: "0",
+        background: "linear-gradient(180deg, #181818 0%, #0B0B0B 100%)",
+        borderColor: "rgba(255,71,0,0.3)",
+        borderBottom: "2px solid #FF4700",
+        boxShadow: "0 4px 40px rgba(255,71,0,0.08)",
+      }}>
+        {/* Wallet utility — top-right absolute */}
+        <div style={{ position: "absolute", top: "18px", right: "20px", display: "flex", alignItems: "center", gap: "10px" }}>
+          {connectError && (
+            <span style={{ fontSize:"10px", color:"#ff6b6b", fontFamily:"monospace" }}>
+              ERR: {connectError.slice(0,40)}
+            </span>
+          )}
+          <div style={{
+            border: "1px solid rgba(255,71,0,0.25)", borderRadius: "0",
+            padding: "6px 12px", fontSize: "11px", fontFamily: "inherit",
+            color: account ? "#FF4700" : "rgba(107,107,94,0.7)", letterSpacing: "0.08em",
+            fontWeight: 700, background: "#111111",
+            textTransform: "uppercase",
+          }}>
+            {account ? abbreviateAddress(account.address) : "NO WALLET"}
           </div>
           {!hasEveVault && !isConnected ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-end" }}>
-              <div style={{ fontSize: "11px", color: "#ff6432", letterSpacing: "0.05em", marginBottom: "2px" }}>
-                ⚠ EVE VAULT NOT DETECTED
-              </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "5px", alignItems: "flex-end" }}>
+              <div style={{ fontSize: "10px", color: "#FF4700", letterSpacing: "0.12em", fontWeight:700, textTransform:"uppercase" }}>⚠ EVE VAULT NOT DETECTED</div>
               <a
                 href="https://github.com/evefrontier/evevault/releases/download/v0.0.5/eve-vault-chrome-v0.0.5.zip"
-                target="_blank"
-                rel="noreferrer"
+                target="_blank" rel="noreferrer"
                 style={{
                   display: "inline-flex", alignItems: "center", gap: "5px",
-                  padding: "6px 14px", borderRadius: "4px", fontSize: "11px", fontWeight: 700,
-                  background: "rgba(255,160,50,0.12)", border: "1px solid rgba(255,160,50,0.4)",
-                  color: "#ffa032", textDecoration: "none", letterSpacing: "0.05em",
+                  padding: "7px 14px", borderRadius: "0", fontSize: "11px", fontWeight: 700,
+                  background: "transparent", border: "1px solid rgba(255,71,0,0.5)",
+                  color: "#FF4700", textDecoration: "none", letterSpacing: "0.08em",
+                  textTransform: "uppercase",
                 }}
-              >
-                ⬇ Install EVE Vault v0.0.5
-              </a>
-              <div style={{ fontSize: "10px", color: "#444", textAlign: "right" }}>
-                Install EVE Vault, then refresh this page
-              </div>
+              >⬇ Install EVE Vault v0.0.5</a>
             </div>
           ) : (
-            <button
-              className="accent-button"
-              onClick={() => (isConnected ? handleDisconnect() : handleConnect())}
-            >
+            <button className="accent-button" style={{ padding: "7px 18px", fontSize: "12px" }}
+              onClick={() => (isConnected ? handleDisconnect() : handleConnect())}>
               {isConnected ? "Disconnect" : "Connect EVE Vault"}
             </button>
           )}
+        </div>
+
+        {/* Centered hero title */}
+        <div style={{ maxWidth: "600px" }}>
+          <p style={{
+            fontSize: "10px", letterSpacing: "0.22em", textTransform: "uppercase",
+            color: "rgba(107,107,94,0.8)", marginBottom: "14px", fontFamily: "inherit",
+            fontWeight: 400,
+          }}>
+            EVE FRONTIER &nbsp;·&nbsp; SUI TESTNET &nbsp;·&nbsp; HACKATHON 2026
+          </p>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:"16px", margin:"0 0 10px" }}>
+            <img src="cradleos-logo.png" alt="CradleOS"
+              style={{ height:"clamp(40px,4.5vw,58px)", width:"auto", imageRendering:"auto", filter:"drop-shadow(0 0 12px rgba(255,71,0,0.5))" }} />
+            <h1 style={{
+              fontSize: "clamp(28px, 4vw, 48px)", fontWeight: 800, letterSpacing: "0.06em",
+              color: "#FF4700", margin: 0,
+            }}>
+              C<span style={{ textTransform: "lowercase", letterSpacing: "0.04em" }}>radle</span>OS
+            </h1>
+          </div>
+          <p style={{
+            fontSize: "11px", letterSpacing: "0.16em", textTransform: "uppercase",
+            color: "rgba(107,107,94,0.7)", fontFamily: "inherit", margin: 0, fontWeight: 400,
+          }}>
+            Tribe Infrastructure &nbsp;·&nbsp; Tribe Treasury &nbsp;·&nbsp; DEX &nbsp;·&nbsp; Jump Nav
+          </p>
         </div>
       </header>
 
       {/* Collapsible context brief */}
       <div style={{
         marginBottom: "12px",
-        border: "1px solid rgba(255,160,50,0.15)",
-        borderRadius: "6px",
+        border: "1px solid rgba(255,71,0,0.15)",
+        borderRadius: "2px",
         overflow: "hidden",
-        background: "rgba(255,160,50,0.03)",
+        background: "#101010",
       }}>
         <button
           onClick={() => setBriefOpen(o => !o)}
           style={{
             width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
             padding: "9px 14px", background: "none", border: "none", cursor: "pointer",
-            color: briefOpen ? "#ffa032" : "#555",
+            color: briefOpen ? "#FF4700" : "rgba(107,107,94,0.5)",
           }}
         >
           <span style={{ fontSize: "11px", letterSpacing: "0.07em", fontWeight: 700 }}>
@@ -171,10 +197,10 @@ function App() {
           )}
         </button>
         {briefOpen && (
-          <div style={{ padding: "4px 14px 12px 28px", borderTop: "1px solid rgba(255,160,50,0.08)" }}>
+          <div style={{ padding: "4px 14px 12px 28px", borderTop: "1px solid rgba(255,71,0,0.08)" }}>
             <ol style={{ margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "5px" }}>
               {brief.steps.map((s, i) => (
-                <li key={i} style={{ color: "#666", fontSize: "12px", lineHeight: 1.5 }}>{s}</li>
+                <li key={i} style={{ color: "rgba(107,107,94,0.6)", fontSize: "12px", lineHeight: 1.5 }}>{s}</li>
               ))}
             </ol>
             {lastDigest && (
@@ -186,45 +212,57 @@ function App() {
         )}
       </div>
 
-      {/* Main nav tabs */}
-      <div style={{ display: "flex", gap: "4px", padding: "0 0 16px 0" }}>
-        {(["structures", "tribe", "defense", "registry", "map"] as Tab[]).map(tab => (
-          <button
-            key={tab}
-            onClick={() => handleTabChange(tab)}
-            style={{
-              padding: "8px 22px",
-              borderRadius: "20px",
-              border: `1px solid ${activeTab === tab ? "#ffa032" : "rgba(255,160,50,0.2)"}`,
-              background: activeTab === tab ? "rgba(255,160,50,0.12)" : "transparent",
-              color: activeTab === tab ? "#ffa032" : "#666",
-              cursor: "pointer",
-              fontSize: "13px",
-              fontWeight: activeTab === tab ? 700 : 400,
-              letterSpacing: "0.04em",
-              textTransform: "uppercase",
-              transition: "all 0.15s",
-            }}
-          >
-            {tab === "structures" ? "🏗 Structures"
-              : tab === "tribe"   ? "⚓ Tribe Coin"
-              : tab === "defense" ? "🛡 Defense"
-              : tab === "registry"? "📋 Registry"
-              :                     "🗺 Starmap"}
-          </button>
-        ))}
+      {/* Main nav tabs — CCP design system: sharp, uppercase, red active indicator */}
+      <div style={{
+        display: "flex", gap: "0", marginBottom: "20px",
+        borderBottom: "1px solid rgba(255,71,0,0.2)",
+        background: "#0F0F0F",
+      }}>
+        {(["structures", "tribe", "defense", "registry", "map"] as Tab[]).map(tab => {
+          const active = activeTab === tab;
+          return (
+            <button
+              key={tab}
+              onClick={() => handleTabChange(tab)}
+              style={{
+                padding: "12px 22px 13px",
+                border: "none",
+                borderBottom: active ? "2px solid #FF4700" : "2px solid transparent",
+                borderRight: "1px solid rgba(255,71,0,0.1)",
+                background: active ? "#1a1a1a" : "transparent",
+                color: active ? "#FF4700" : "rgba(107,107,94,0.6)",
+                cursor: "pointer",
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                transition: "color 0.1s, background 0.1s, border-color 0.1s",
+                marginBottom: "-1px",
+                fontFamily: "inherit",
+              }}
+              onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,71,0,0.8)"; (e.currentTarget as HTMLButtonElement).style.background = "#151515"; } }}
+              onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLButtonElement).style.color = "rgba(107,107,94,0.6)"; (e.currentTarget as HTMLButtonElement).style.background = "transparent"; } }}
+            >
+              {tab === "structures" ? "Structures"
+                : tab === "tribe"   ? "Tribe Coin"
+                : tab === "defense" ? "Defense"
+                : tab === "registry"? "Registry"
+                :                     "Starmap"}
+            </button>
+          );
+        })}
       </div>
 
       {activeTab === "map" ? (
-        <div style={{ height: "75vh", minHeight: "480px", border: "1px solid rgba(255,160,50,0.12)", borderRadius: "8px", overflow: "hidden" }}>
+        <div style={{ height: "75vh", minHeight: "480px", border: "1px solid rgba(255,71,0,0.12)", borderRadius: "0", overflow: "hidden" }}>
           <MapPanel />
         </div>
       ) : (
-        <div className="dashboard-grid">
-          {activeTab === "structures" && <StructurePanel    onTxSuccess={setLastDigest} />}
-          {activeTab === "tribe"      && <TribeVaultPanel   onTxSuccess={setLastDigest} />}
-          {activeTab === "defense"    && <TurretPolicyPanel />}
-          {activeTab === "registry"   && <RegistryPanel />}
+        <div style={{ background: "var(--ccp-bg)", padding: "0" }}>
+          {activeTab === "structures" && <div style={{ background: "var(--ccp-bg)" }}><StructurePanel    onTxSuccess={setLastDigest} /></div>}
+          {activeTab === "tribe"      && <div style={{ background: "var(--ccp-bg)" }}><TribeVaultPanel   onTxSuccess={setLastDigest} /></div>}
+          {activeTab === "defense"    && <div style={{ background: "var(--ccp-bg)" }}><TurretPolicyPanel /></div>}
+          {activeTab === "registry"   && <div style={{ background: "var(--ccp-bg)" }}><RegistryPanel /></div>}
         </div>
       )}
     </main>

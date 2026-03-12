@@ -32,16 +32,23 @@ const KIND_ICON: Record<string, string> = {
 };
 
 /**
- * Derive a human-readable storage unit size label from energy cost.
- * EVE Frontier storage unit tiers by energy requirement:
- *   Heavy  ≥ 400 ⚡  (large industrial containers)
- *   Standard 60–399   (standard storage)
- *   Mini   < 60       (smallest deployable)
+ * Derive structure tier label from on-chain energy cost + kind.
+ * Confirmed energy costs per kind:
+ *
+ *   Turret:       Heavy=40  Standard=20  Mini=10
+ *   StorageUnit:  Heavy≥400 Standard≥60  Mini<60  (approximate — confirm when available)
+ *   Assembly:     same thresholds as StorageUnit until confirmed
  */
-function storageUnitSize(energyCost?: number): string {
+function structureTier(energyCost?: number, kind?: string): string {
   if (energyCost == null || energyCost === 0) return "";
-  if (energyCost >= 400) return "Heavy";
-  if (energyCost >= 60)  return "Standard";
+  if (kind === "Turret") {
+    if (energyCost >= 35) return "Heavy";
+    if (energyCost >= 15) return "Standard";
+    return "Mini";
+  }
+  // StorageUnit, Assembly — confirmed: Heavy=500, Standard=100, Mini=50
+  if (energyCost >= 300) return "Heavy";
+  if (energyCost >= 75)  return "Standard";
   return "Mini";
 }
 
@@ -51,11 +58,11 @@ function StatusBadge({ isOnline }: { isOnline: boolean }) {
   return (
     <span style={{
       padding: "2px 10px",
-      borderRadius: "12px",
+      borderRadius: "0",
       fontSize: "11px",
       fontWeight: 700,
       letterSpacing: "0.08em",
-      background: isOnline ? "rgba(0,255,150,0.12)" : "rgba(255,100,50,0.12)",
+      background: isOnline ? "rgba(0,255,150,0.12)" : "rgba(255,71,0,0.12)",
       color: isOnline ? "#00ff96" : "#ff6432",
       border: `1px solid ${isOnline ? "#00ff9640" : "#ff643240"}`,
     }}>
@@ -132,8 +139,8 @@ function StructureRow({
   return (
     <div style={{
       background: "rgba(255,255,255,0.03)",
-      border: "1px solid rgba(255,160,50,0.15)",
-      borderRadius: "6px",
+      border: "1px solid rgba(255,71,0,0.15)",
+      borderRadius: "2px",
       padding: "12px 16px",
       marginBottom: "8px",
     }}>
@@ -150,10 +157,10 @@ function StructureRow({
               onKeyDown={e => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") setRenaming(false); }}
               placeholder={structure.label}
               style={{
-                background: "rgba(255,160,50,0.08)",
-                border: "1px solid rgba(255,160,50,0.4)",
-                borderRadius: "4px",
-                color: "#ffa032",
+                background: "#161616",
+                border: "1px solid rgba(255,71,0,0.4)",
+                borderRadius: "0",
+                color: "#FF4700",
                 fontSize: "13px",
                 fontWeight: 600,
                 padding: "3px 8px",
@@ -170,7 +177,7 @@ function StructureRow({
           </div>
         ) : (
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <span style={{ color: "#ffa032", fontWeight: 600, minWidth: "110px" }}>{structure.displayName}</span>
+            <span style={{ color: "#FF4700", fontWeight: 600, minWidth: "110px" }}>{structure.displayName}</span>
             {/* Object ID chip — always unique, links to chain explorer */}
             <a
               href={`https://suiscan.xyz/testnet/object/${structure.objectId}`}
@@ -181,10 +188,10 @@ function StructureRow({
                 display: "inline-block",
                 fontFamily: "monospace",
                 fontSize: "10px",
-                color: "#444",
+                color: "rgba(107,107,94,0.7)",
                 background: "rgba(255,255,255,0.04)",
                 border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: "4px",
+                borderRadius: "0",
                 padding: "1px 5px",
                 letterSpacing: "0.04em",
                 textDecoration: "none",
@@ -204,7 +211,7 @@ function StructureRow({
                   background: "none",
                   border: "none",
                   cursor: "pointer",
-                  color: "#555",
+                  color: "rgba(107,107,94,0.55)",
                   fontSize: "13px",
                   padding: "0 2px",
                   lineHeight: 1,
@@ -216,22 +223,22 @@ function StructureRow({
           </div>
         )}
 
-        {/* Storage unit size badge — right of name */}
-        {structure.kind === "StorageUnit" && storageUnitSize(structure.energyCost) && (
+        {/* Size badge — StorageUnit, Assembly, Turret */}
+        {(structure.kind === "StorageUnit" || structure.kind === "Assembly" || structure.kind === "Turret") && structureTier(structure.energyCost, structure.kind) && (
           <span style={{
             fontSize: "10px", fontWeight: 700, letterSpacing: "0.07em",
-            padding: "2px 7px", borderRadius: "4px",
-            background: "rgba(255,160,50,0.10)", border: "1px solid rgba(255,160,50,0.22)",
+            padding: "2px 7px", borderRadius: "0",
+            background: "#181818", border: "1px solid rgba(255,71,0,0.22)",
             color: "#cc8020", flexShrink: 0,
           }}>
-            {storageUnitSize(structure.energyCost).toUpperCase()}
+            {structureTier(structure.energyCost, structure.kind).toUpperCase()}
           </span>
         )}
 
         <StatusBadge isOnline={structure.isOnline} />
 
         {structure.kind === "NetworkNode" && structure.fuelLevelPct !== undefined && (
-          <span style={{ fontSize: "12px", color: "#888", marginLeft: "4px" }}>
+          <span style={{ fontSize: "12px", color: "#FAFAE5", fontWeight: 700, marginLeft: "4px", letterSpacing: "0.04em" }}>
             ⛽ {structure.fuelLevelPct.toFixed(1)}% · ⏱ {structure.runtimeHoursRemaining?.toFixed(0)}h
           </span>
         )}
@@ -239,13 +246,14 @@ function StructureRow({
         {/* Energy cost badge (non-NetworkNode structures) */}
         {structure.kind !== "NetworkNode" && structure.energyCost !== undefined && structure.energyCost > 0 && (
           <span style={{
-            fontSize: "10px",
-            color: "#666",
-            background: "rgba(255,160,50,0.06)",
-            border: "1px solid rgba(255,160,50,0.15)",
-            borderRadius: "4px",
-            padding: "1px 5px",
-            fontFamily: "monospace",
+            fontSize: "11px",
+            fontWeight: 700,
+            color: "#FF4700",
+            background: "transparent",
+            border: "none",
+            borderRadius: "0",
+            padding: "0 4px",
+            letterSpacing: "0.04em",
           }}>
             ⚡{structure.energyCost}
           </span>
@@ -354,11 +362,11 @@ function GroupBatchControls({
       display: "flex", flexDirection: "column", gap: "6px", marginBottom: "12px",
       padding: "8px 12px",
       background: "rgba(255,255,255,0.02)",
-      border: "1px solid rgba(255,160,50,0.10)",
-      borderRadius: "8px",
+      border: "1px solid rgba(255,71,0,0.10)",
+      borderRadius: "0",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-        <span style={{ color: "#555", fontSize: "11px", letterSpacing: "0.06em" }}>BATCH</span>
+        <span style={{ color: "rgba(107,107,94,0.55)", fontSize: "11px", letterSpacing: "0.06em" }}>BATCH</span>
 
         <button
           className="accent-button"
@@ -380,7 +388,7 @@ function GroupBatchControls({
 
         {/* Energy tally */}
         {availableEnergy !== null && (
-          <span style={{ marginLeft: "auto", fontSize: "11px", color: availableEnergy < 50 ? "#ff6432" : "#888" }}>
+          <span style={{ marginLeft: "auto", fontSize: "12px", fontWeight: 700, color: availableEnergy < 50 ? "#ff3838" : "#FAFAE5", letterSpacing: "0.04em" }}>
             ⚡ {availableEnergy - (busy === "online" ? pendingCost : 0)} / {availableEnergy + onlineStructures.reduce((s, x) => s + (x.energyCost ?? 0), 0)} available
           </span>
         )}
@@ -478,7 +486,7 @@ export function StructurePanel({ onTxSuccess }: Props) {
   const activeGroup = groups[activeTab] ?? groups[0];
 
   return (
-    <div>
+    <div style={{ background: "var(--ccp-bg)" }}>
       {/* Location Tabs */}
       <div style={{ display: "flex", gap: "4px", marginBottom: "16px", flexWrap: "wrap" }}>
         {groups.map((group, idx) => (
@@ -487,10 +495,10 @@ export function StructurePanel({ onTxSuccess }: Props) {
             onClick={() => setActiveTab(idx)}
             style={{
               padding: "6px 16px",
-              borderRadius: "20px",
-              border: `1px solid ${idx === activeTab ? "#ffa032" : "rgba(255,160,50,0.25)"}`,
-              background: idx === activeTab ? "rgba(255,160,50,0.15)" : "transparent",
-              color: idx === activeTab ? "#ffa032" : "#888",
+              borderRadius: "0",
+              border: `1px solid ${idx === activeTab ? "#FF4700" : "rgba(255,71,0,0.25)"}`,
+              background: idx === activeTab ? "#1e1e1e" : "transparent",
+              color: idx === activeTab ? "#FF4700" : "#888",
               cursor: "pointer",
               fontSize: "13px",
               fontWeight: idx === activeTab ? 600 : 400,

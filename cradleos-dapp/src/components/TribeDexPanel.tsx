@@ -43,11 +43,11 @@ function StatBox({ label, value, sub }: { label: string; value: string; sub?: st
     <div style={{
       background: "rgba(255,255,255,0.03)",
       border: "1px solid rgba(255,255,255,0.08)",
-      borderRadius: "8px", padding: "12px 16px", minWidth: "100px",
+      borderRadius: "0", padding: "12px 16px", minWidth: "100px",
     }}>
-      <div style={{ color: "#555", fontSize: "10px", letterSpacing: "0.06em", marginBottom: "4px" }}>{label}</div>
+      <div style={{ color: "rgba(107,107,94,0.55)", fontSize: "10px", letterSpacing: "0.06em", marginBottom: "4px" }}>{label}</div>
       <div style={{ color: "#fff", fontWeight: 700, fontSize: "18px" }}>{value}</div>
-      {sub && <div style={{ color: "#555", fontSize: "11px", marginTop: "2px" }}>{sub}</div>}
+      {sub && <div style={{ color: "rgba(107,107,94,0.55)", fontSize: "11px", marginTop: "2px" }}>{sub}</div>}
     </div>
   );
 }
@@ -131,21 +131,21 @@ function OrderRow({
       padding: "10px 14px",
       background: "rgba(255,255,255,0.02)",
       border: "1px solid rgba(255,255,255,0.06)",
-      borderRadius: "6px", marginBottom: "6px",
+      borderRadius: "2px", marginBottom: "6px",
     }}>
       {/* Order info */}
-      <div style={{ flex: "0 0 50px", color: "#555", fontSize: "11px", fontFamily: "monospace" }}>
+      <div style={{ flex: "0 0 50px", color: "rgba(107,107,94,0.55)", fontSize: "11px", fontFamily: "monospace" }}>
         #{order.orderId}
       </div>
-      <div style={{ flex: "0 0 90px", color: "#ffa032", fontWeight: 600, fontSize: "13px" }}>
+      <div style={{ flex: "0 0 90px", color: "#FF4700", fontWeight: 600, fontSize: "13px" }}>
         {order.rawRemaining.toLocaleString()} {vault.coinSymbol}
       </div>
       <div style={{ flex: "0 0 110px", color: "#aaa", fontSize: "12px" }}>
         @ {fmtCrdl(order.priceCrdlPerRaw)}/{vault.coinSymbol}
       </div>
-      <div style={{ flex: 1, color: "#555", fontSize: "11px", fontFamily: "monospace" }}>
+      <div style={{ flex: 1, color: "rgba(107,107,94,0.55)", fontSize: "11px", fontFamily: "monospace" }}>
         {isMine ? (
-          <span style={{ color: "#ffa032" }}>● yours</span>
+          <span style={{ color: "#FF4700" }}>● yours</span>
         ) : shortAddr(order.seller)}
       </div>
 
@@ -162,18 +162,18 @@ function OrderRow({
             style={{
               width: "70px",
               background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)",
-              borderRadius: "4px", color: "#fff", fontSize: "12px", padding: "5px 8px", outline: "none",
+              borderRadius: "0", color: "#fff", fontSize: "12px", padding: "5px 8px", outline: "none",
             }}
           />
           {fillAmt && parseInt(fillAmt) > 0 && (
-            <span style={{ color: "#555", fontSize: "10px", minWidth: "70px" }}>{costCrdl.toLocaleString()} CRDL</span>
+            <span style={{ color: "rgba(107,107,94,0.55)", fontSize: "10px", minWidth: "70px" }}>{costCrdl.toLocaleString()} CRDL</span>
           )}
           <button
             onClick={handleFill}
             disabled={busy || !fillAmt || parseInt(fillAmt) <= 0 || parseInt(fillAmt) > order.rawRemaining}
             style={{
               background: "rgba(0,255,150,0.10)", border: "1px solid #00ff9640",
-              color: "#00ff96", borderRadius: "4px", fontSize: "12px", padding: "5px 12px", cursor: "pointer",
+              color: "#00ff96", borderRadius: "0", fontSize: "12px", padding: "5px 12px", cursor: "pointer",
             }}
           >
             {busy ? "…" : "Buy"}
@@ -187,8 +187,8 @@ function OrderRow({
           onClick={handleCancel}
           disabled={busy}
           style={{
-            background: "rgba(255,100,50,0.08)", border: "1px solid rgba(255,100,50,0.3)",
-            color: "#ff8060", borderRadius: "4px", fontSize: "11px", padding: "4px 10px", cursor: "pointer",
+            background: "#161616", border: "1px solid rgba(255,71,0,0.3)",
+            color: "#ff8060", borderRadius: "0", fontSize: "11px", padding: "4px 10px", cursor: "pointer",
           }}
         >
           {busy ? "…" : "Cancel"}
@@ -207,9 +207,9 @@ function FillRow({ ev, symbol }: { ev: OrderFilledEvent; symbol: string }) {
     <div style={{
       display: "flex", gap: "10px", padding: "6px 0",
       borderBottom: "1px solid rgba(255,255,255,0.04)",
-      fontSize: "11px", color: "#666",
+      fontSize: "11px", color: "rgba(107,107,94,0.6)",
     }}>
-      <span style={{ minWidth: "40px", color: "#555" }}>#{ev.orderId}</span>
+      <span style={{ minWidth: "40px", color: "rgba(107,107,94,0.55)" }}>#{ev.orderId}</span>
       <span style={{ color: "#00ff96" }}>+{ev.fillAmount.toLocaleString()} {symbol}</span>
       <span>@ {fmtCrdl(ev.priceCrdlPerRaw)}</span>
       <span style={{ flex: 1, textAlign: "right", fontFamily: "monospace" }}>
@@ -287,10 +287,10 @@ function DexDashboard({
     <div>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "baseline", gap: "10px", marginBottom: "20px" }}>
-        <div style={{ color: "#ffa032", fontWeight: 700, fontSize: "20px" }}>
+        <div style={{ color: "#FF4700", fontWeight: 700, fontSize: "20px" }}>
           {vault.coinSymbol} / CRDL
         </div>
-        <div style={{ color: "#555", fontSize: "12px" }}>Order Book</div>
+        <div style={{ color: "rgba(107,107,94,0.55)", fontSize: "12px" }}>Order Book</div>
         {dex.lastPriceCrdl > 0 && (
           <div style={{
             marginLeft: "auto", color: "#00ff96", fontWeight: 700, fontSize: "14px",
@@ -333,18 +333,18 @@ function DexDashboard({
       {/* Post sell order */}
       <div style={{
         background: "rgba(255,255,255,0.02)",
-        border: "1px solid rgba(255,160,50,0.12)",
-        borderRadius: "8px", padding: "14px", marginBottom: "20px",
+        border: "1px solid rgba(255,71,0,0.12)",
+        borderRadius: "0", padding: "14px", marginBottom: "20px",
       }}>
-        <div style={{ color: "#ffa032", fontWeight: 600, fontSize: "13px", marginBottom: "10px" }}>
+        <div style={{ color: "#FF4700", fontWeight: 600, fontSize: "13px", marginBottom: "10px" }}>
           ↓ Post Sell Order
-          <span style={{ color: "#555", fontWeight: 400, fontSize: "11px", marginLeft: "8px" }}>
+          <span style={{ color: "rgba(107,107,94,0.55)", fontWeight: 400, fontSize: "11px", marginLeft: "8px" }}>
             your balance: {(myBalance ?? 0).toLocaleString()} {vault.coinSymbol}
           </span>
         </div>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-            <span style={{ color: "#555", fontSize: "10px" }}>AMOUNT ({vault.coinSymbol})</span>
+            <span style={{ color: "rgba(107,107,94,0.55)", fontSize: "10px" }}>AMOUNT ({vault.coinSymbol})</span>
             <input
               type="number"
               value={sellAmt}
@@ -360,7 +360,7 @@ function DexDashboard({
             />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-            <span style={{ color: "#555", fontSize: "10px" }}>PRICE (CRDL per {vault.coinSymbol})</span>
+            <span style={{ color: "rgba(107,107,94,0.55)", fontSize: "10px" }}>PRICE (CRDL per {vault.coinSymbol})</span>
             <input
               type="number"
               value={sellPrice}
@@ -376,10 +376,10 @@ function DexDashboard({
           </div>
           {sellAmt && sellPrice && (
             <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-              <span style={{ color: "#555", fontSize: "10px" }}>TOTAL</span>
+              <span style={{ color: "rgba(107,107,94,0.55)", fontSize: "10px" }}>TOTAL</span>
               <div style={{
-                padding: "7px 10px", fontSize: "13px", color: "#ffa032", fontFamily: "monospace",
-                background: "rgba(255,160,50,0.06)", border: "1px solid rgba(255,160,50,0.15)",
+                padding: "7px 10px", fontSize: "13px", color: "#FF4700", fontFamily: "monospace",
+                background: "#131313", border: "1px solid rgba(255,71,0,0.15)",
                 borderRadius: "5px",
               }}>
                 {(parseInt(sellAmt) * parseInt(sellPrice)).toLocaleString()} CRDL
@@ -393,7 +393,7 @@ function DexDashboard({
               disabled={postBusy || !sellAmt || !sellPrice || parseInt(sellAmt) <= 0 || parseInt(sellAmt) > (myBalance ?? 0)}
               style={{
                 padding: "7px 20px", fontSize: "13px",
-                background: "rgba(255,160,50,0.10)", borderColor: "#ffa03240", color: "#ffa032",
+                background: "#181818", borderColor: "#FF470040", color: "#FF4700",
               }}
             >
               {postBusy ? "…" : "List"}
@@ -409,7 +409,7 @@ function DexDashboard({
           OPEN ORDERS ({orders?.length ?? 0})
         </div>
         {!orders?.length ? (
-          <div style={{ color: "#444", fontSize: "12px", padding: "12px 0" }}>No open orders</div>
+          <div style={{ color: "rgba(107,107,94,0.7)", fontSize: "12px", padding: "12px 0" }}>No open orders</div>
         ) : (
           orders.map(o => (
             <OrderRow
@@ -453,7 +453,7 @@ function ConnectDexForm({
     <div style={{
       background: "rgba(255,255,255,0.03)",
       border: "1px solid rgba(255,255,255,0.08)",
-      borderRadius: "8px", padding: "20px",
+      borderRadius: "0", padding: "20px",
     }}>
       <div style={{ color: "#aaa", fontSize: "13px", marginBottom: "12px" }}>
         Paste the TribeDex object ID from your create-dex transaction:
@@ -558,7 +558,7 @@ export function TribeDexPanel({ vault, onTxSuccess }: Props) {
   }
 
   if (isLoading) {
-    return <div style={{ color: "#555", padding: "32px", textAlign: "center" }}>Loading DEX…</div>;
+    return <div style={{ color: "rgba(107,107,94,0.55)", padding: "32px", textAlign: "center" }}>Loading DEX…</div>;
   }
 
   if (!dex) {
@@ -567,7 +567,7 @@ export function TribeDexPanel({ vault, onTxSuccess }: Props) {
         <div style={{ color: "#aaa", fontWeight: 600, marginBottom: "16px" }}>
           {vault.coinSymbol} / CRDL Order Book
         </div>
-        <p style={{ color: "#666", fontSize: "13px", marginBottom: "20px" }}>
+        <p style={{ color: "rgba(107,107,94,0.6)", fontSize: "13px", marginBottom: "20px" }}>
           No DEX found for this vault. Create one to enable on-chain price discovery and TRIBE/CRDL trading.
         </p>
         <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
@@ -582,7 +582,7 @@ export function TribeDexPanel({ vault, onTxSuccess }: Props) {
         {createErr && <div style={{ color: "#ff6432", fontSize: "12px", marginBottom: "12px" }}>⚠ {createErr}</div>}
         {!cachedId && (
           <>
-            <div style={{ color: "#555", fontSize: "12px", margin: "12px 0" }}>— or connect existing —</div>
+            <div style={{ color: "rgba(107,107,94,0.55)", fontSize: "12px", margin: "12px 0" }}>— or connect existing —</div>
             <ConnectDexForm vaultId={vault.objectId} onConnect={id => setManualDexId(id)} />
           </>
         )}

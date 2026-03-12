@@ -188,3 +188,27 @@ Always carry enough before exploring — running dry in deep space = stuck.
 - **Crowns**: Singleton unstack-able objects; usable from non-ship storage; show more info about contained memories
 - **Wrecks**: Now have resolvable signatures
 - **Known Issue**: Heavy Turret can shoot players before they can detect it with passive scanning
+
+---
+
+## Turret Size Tiers — Confirmed from ATTRIBUTES (2026-03-12)
+
+Three confirmed turret tiers in EVE Frontier:
+
+| Tier | Name | Mass (kg) | Max Targeting Range | Activation Delay | Shield HP | Armor HP | Structure HP |
+|------|------|-----------|--------------------|--------------------|-----------|----------|--------------|
+| MINI | Mini Turret | 132,500 | 80.00 km | 1 minute | 10,000 | 10,000 | 10,000 |
+| STANDARD | Turret | 198,750 | 120.00 km | 24 minutes | 15,000 | 15,000 | 15,000 |
+| HEAVY | Heavy Turret | 265,000 | 160.00 km | 48 minutes | 25,000 | 25,000 | 25,000 |
+
+All tiers share:
+- Powergrid Output: 5,000 MW
+- High Slots: 1
+- Volume: 600 m³ (Mini/Standard), 300 m³ (Heavy)
+- CPU Output: 1,000 tf
+- Capacitor Recharge: 10,000 GJ/s
+- Maximum Locked Targets: 2
+- Turret Hardpoints: 1
+- Sensor Strength: 4× 50 points
+
+Names in-game match CradleOS size classification (MINI/STANDARD/HEAVY) exactly.
