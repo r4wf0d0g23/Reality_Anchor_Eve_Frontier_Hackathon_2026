@@ -21,6 +21,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { CSS2DRenderer, CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 
 const WORLD_API  = "https://world-api-utopia.uat.pub.evefrontier.com";
 const CACHE_KEY  = "cradleos:starmap:v5";
@@ -99,7 +100,7 @@ const FUELS: FuelSpec[] = [
 
 // ── Jump formulas (community-reverse-engineered) ───────────────────────────────
 const MAX_TEMP  = 150;
-const HEAT_K    = 3;       // unconfirmed constant
+const HEAT_K    = 3;       // ⚠ community-sourced — gives near-0 for heavy ships; use manual override
 const FUEL_K    = 1e-7;    // community-validated
 
 /** Max LY per single jump given current temperature and loaded mass */
@@ -228,11 +229,15 @@ export function MapPanel() {
   const pointsRef    = useRef<THREE.Points | null>(null);
   const routeGrpRef  = useRef<THREE.Group | null>(null);
   const gateLinesRef  = useRef<THREE.LineSegments | null>(null);
+  const reachHaloRef  = useRef<THREE.Points | null>(null);
+  const css2dRef      = useRef<CSS2DRenderer | null>(null);
+  const haloLabelsRef = useRef<CSS2DObject[]>([]);
   const systemsRef   = useRef<SolarSystem[]>([]);
   const sortedXRef   = useRef<{ idx: number; xLY: number }[]>([]);
   const rafRef       = useRef(0);
   const raycaster    = useRef(new THREE.Raycaster());
   const mouseNDC     = useRef(new THREE.Vector2(-9, -9));
+  const mouseDownPos = useRef<{x:number;y:number} | null>(null);
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [loadState, setLoadState]     = useState({ loaded: 0, total: 0, done: false });
@@ -254,6 +259,8 @@ export function MapPanel() {
   const [toRes, setToRes]             = useState<SolarSystem[]>([]);
   const [toSys, setToSys]             = useState<SolarSystem | null>(null);
   const [routeState, setRouteState]   = useState<RouteResult | "calculating" | "not_found" | null>(null);
+  const [manualHopLY, setManualHopLY] = useState<string>("");   // overrides heat formula when set
+  const [activeField, setActiveField] = useState<"from" | "to">("from");  // which picker gets map clicks
 
   const ship = SHIPS.find(s => s.id === shipId) ?? SHIPS[2];
   const fuel = FUELS.find(f => f.id === fuelId) ?? FUELS[1];
@@ -268,8 +275,14 @@ export function MapPanel() {
     () => fuelLimitedRange(ship, tankUnits, fuel),
     [ship, tankUnits, fuel]
   );
-  // BFS hop limit = heat-limited range (each jump consumes heat)
-  const effectiveRange = heatRangeLY;
+  // BFS hop limit: manual override takes precedence over heat formula
+  const parsedManual   = parseFloat(manualHopLY);
+  const effectiveRange = (!isNaN(parsedManual) && parsedManual > 0) ? parsedManual : heatRangeLY;
+
+  // Pre-load override with fuel-limited max range whenever ship/fuel/tank changes
+  useEffect(() => {
+    setManualHopLY(Math.round(fuelRangeLY).toString());
+  }, [shipId, fuelId, tankUnits]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Three.js init ──────────────────────────────────────────────────────────
 
@@ -294,18 +307,32 @@ export function MapPanel() {
     controls.screenSpacePanning = true; controls.minDistance = 1; controls.maxDistance = 10000;
     controlsRef.current = controls;
 
-    const animate = () => { rafRef.current = requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); };
+    // CSS2D label renderer (overlays HTML at 3D world positions)
+    const css2d = new CSS2DRenderer();
+    css2d.setSize(mount.clientWidth || 800, mount.clientHeight || 600);
+    css2d.domElement.style.cssText = "position:absolute;top:0;left:0;pointer-events:none;overflow:hidden;";
+    mount.appendChild(css2d.domElement);
+    css2dRef.current = css2d;
+
+    const animate = () => {
+      rafRef.current = requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+      css2d.render(scene, camera);
+    };
     animate();
 
     const onResize = () => {
       const w = mount.clientWidth, h = mount.clientHeight; if (!w || !h) return;
-      camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h);
+      camera.aspect = w / h; camera.updateProjectionMatrix();
+      renderer.setSize(w, h); css2d.setSize(w, h);
     };
     const ro = new ResizeObserver(onResize); ro.observe(mount); setTimeout(onResize, 0);
 
     return () => {
       cancelAnimationFrame(rafRef.current); ro.disconnect(); controls.dispose(); renderer.dispose();
       if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement);
+      if (mount.contains(css2d.domElement)) mount.removeChild(css2d.domElement);
     };
   }, []);
 
@@ -454,6 +481,102 @@ export function MapPanel() {
     scene.add(grp); routeGrpRef.current = grp;
   }, []);
 
+  // ── Reachable systems halo ────────────────────────────────────────────────────
+
+  // Stable callback passed into drawReachHalo closure for label clicks
+  const onSetTo = useCallback((sys: SolarSystem) => {
+    setToSys(sys); setToQ(sys.name); setToRes([]);
+    setActiveField("to");
+  }, []);
+
+  const drawReachHalo = useCallback((origin: SolarSystem, rangeLY: number) => {
+    const scene = sceneRef.current; if (!scene) return;
+
+    // Clear old halo + labels
+    if (reachHaloRef.current) { scene.remove(reachHaloRef.current); reachHaloRef.current = null; }
+    for (const lbl of haloLabelsRef.current) scene.remove(lbl);
+    haloLabelsRef.current = [];
+    if (rangeLY <= 0) return;
+
+    const systems = systemsRef.current, sorted = sortedXRef.current;
+    if (!systems.length) return;
+
+    const rangeM = rangeLY * LY_M, rangeM2 = rangeM * rangeM;
+    const ox = origin.x, oy = origin.y, oz = origin.z;
+    const oxLY = ox / LY_M;
+    const xLYArr = sorted.map(e => e.xLY);
+
+    let lo = 0, hi = sorted.length - 1;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (xLYArr[m] < oxLY - rangeLY) lo = m + 1; else hi = m; }
+    const start = lo;
+    lo = 0; hi = sorted.length - 1;
+    while (lo < hi) { const m = (lo + hi + 1) >> 1; if (xLYArr[m] > oxLY + rangeLY) hi = m - 1; else lo = m; }
+    const end = lo;
+
+    const pts: number[] = [];
+    const inRange: SolarSystem[] = [];
+    for (let i = start; i <= end; i++) {
+      const s = systems[sorted[i].idx];
+      if (s.id === origin.id) continue;
+      const dx = s.x - ox, dy = s.y - oy, dz = s.z - oz;
+      if (dx*dx + dy*dy + dz*dz <= rangeM2) {
+        pts.push(s.x*SCALE, s.y*SCALE, s.z*SCALE);
+        inRange.push(s);
+      }
+    }
+
+    if (!pts.length) return;
+
+    // Halo point cloud
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(pts), 3));
+    const mat = new THREE.PointsMaterial({ size: 3, sizeAttenuation: false, color: 0x00e8ff, transparent: true, opacity: 0.85 });
+    const halo = new THREE.Points(geo, mat);
+    scene.add(halo);
+    reachHaloRef.current = halo;
+
+    // CSS2D name labels — clickable to set TO system
+    const newLabels: CSS2DObject[] = [];
+    for (const s of inRange) {
+      const div = document.createElement("div");
+      div.textContent = s.name;
+      div.style.cssText = [
+        "color:#00e8ff",
+        "font:10px/1 monospace",
+        "white-space:nowrap",
+        "padding:2px 6px",
+        "background:rgba(0,12,20,0.75)",
+        "border:1px solid rgba(0,232,255,0.15)",
+        "border-radius:3px",
+        "pointer-events:auto",
+        "cursor:pointer",
+        "transform:translate(6px,-50%)",
+        "text-shadow:0 0 6px rgba(0,232,255,0.5)",
+        "transition:background 0.1s",
+      ].join(";");
+      div.addEventListener("mouseenter", () => { div.style.background = "rgba(0,50,70,0.9)"; div.style.color = "#fff"; });
+      div.addEventListener("mouseleave", () => { div.style.background = "rgba(0,12,20,0.75)"; div.style.color = "#00e8ff"; });
+      div.addEventListener("click", (e) => {
+        e.stopPropagation();
+        onSetTo(s);
+      });
+      const label = new CSS2DObject(div);
+      label.position.set(s.x*SCALE, s.y*SCALE, s.z*SCALE);
+      scene.add(label);
+      newLabels.push(label);
+    }
+    haloLabelsRef.current = newLabels;
+  }, [onSetTo]);
+
+  useEffect(() => {
+    if (fromSys && effectiveRange > 0) drawReachHalo(fromSys, effectiveRange);
+    else if (sceneRef.current) {
+      if (reachHaloRef.current) { sceneRef.current.remove(reachHaloRef.current); reachHaloRef.current = null; }
+      for (const lbl of haloLabelsRef.current) sceneRef.current.remove(lbl);
+      haloLabelsRef.current = [];
+    }
+  }, [fromSys, effectiveRange, drawReachHalo]);
+
   // ── Calculate route ────────────────────────────────────────────────────────
 
   const handleCalc = useCallback(() => {
@@ -492,6 +615,38 @@ export function MapPanel() {
     }
     setTooltip(null);
   }, []);
+
+  const onMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    mouseDownPos.current = { x: e.clientX, y: e.clientY };
+  }, []);
+
+  const onMapClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!planOpen) return;
+    const down = mouseDownPos.current;
+    if (down) {
+      const dx = e.clientX - down.x, dy = e.clientY - down.y;
+      if (Math.sqrt(dx*dx + dy*dy) > 6) return;  // ignore drag
+    }
+    const mount = mountRef.current, cam = cameraRef.current, pts = pointsRef.current;
+    if (!mount || !cam || !pts) return;
+    const rect = mount.getBoundingClientRect();
+    const ndx = ((e.clientX - rect.left) / rect.width)  *  2 - 1;
+    const ndy = ((e.clientY - rect.top)  / rect.height) * -2 + 1;
+    raycaster.current.params.Points = { threshold: 5 };
+    raycaster.current.setFromCamera(new THREE.Vector2(ndx, ndy), cam);
+    const hits = raycaster.current.intersectObject(pts);
+    if (hits.length > 0 && hits[0].index != null) {
+      const sys = systemsRef.current[hits[0].index];
+      if (!sys) return;
+      if (activeField === "from") {
+        setFromSys(sys); setFromQ(sys.name); setFromRes([]);
+        flyTo(sys);
+        setActiveField("to");   // auto-advance to TO after FROM is set
+      } else {
+        setToSys(sys); setToQ(sys.name); setToRes([]);
+      }
+    }
+  }, [planOpen, activeField, flyTo]);
 
   const pct = loadState.total > 0 ? Math.round((loadState.loaded / loadState.total) * 100) : 0;
 
@@ -560,14 +715,29 @@ export function MapPanel() {
       <div style={{ flex:1, display:"flex", minHeight:0, overflow:"hidden" }}>
 
         {/* 3D viewport */}
-        <div ref={mountRef} onMouseMove={onMouseMove} onMouseLeave={()=>setTooltip(null)}
-          style={{ flex:1, position:"relative", overflow:"hidden", minHeight:0 }}>
+        <div ref={mountRef}
+          onMouseMove={onMouseMove}
+          onMouseLeave={()=>setTooltip(null)}
+          onMouseDown={onMouseDown}
+          onClick={onMapClick}
+          style={{ flex:1, position:"relative", overflow:"hidden", minHeight:0,
+            cursor: planOpen ? (activeField === "from" ? "crosshair" : "cell") : "default" }}>
           {tooltip && (
             <div style={{ position:"absolute", left:tooltip.x, top:tooltip.y, pointerEvents:"none",
               background:"rgba(4,6,12,0.95)", border:"1px solid rgba(255,160,50,0.4)",
               borderRadius:"4px", padding:"4px 10px", fontSize:"11px",
               color:"#ffa032", fontFamily:"monospace", whiteSpace:"nowrap", zIndex:10 }}>
               {tooltip.name}
+            </div>
+          )}
+          {planOpen && loadState.done && (
+            <div style={{ position:"absolute", top:"10px", left:"50%", transform:"translateX(-50%)",
+              pointerEvents:"none", zIndex:5 }}>
+              <div style={{ background:"rgba(4,6,14,0.85)", border:`1px solid ${activeField==="from"?"rgba(0,255,150,0.5)":"rgba(255,100,50,0.5)"}`,
+                borderRadius:"20px", padding:"4px 14px", fontSize:"11px", color: activeField==="from"?"#00ff96":"#ff6432",
+                fontFamily:"monospace", letterSpacing:"0.06em" }}>
+                {activeField === "from" ? "Click to set FROM" : "Click to set TO"}
+              </div>
             </div>
           )}
           {!loadState.done && (
@@ -673,13 +843,13 @@ export function MapPanel() {
               </div>
 
               {/* Range summary — two constraints */}
-              <div style={{ marginBottom:"16px", padding:"9px 10px",
+              <div style={{ marginBottom:"12px", padding:"9px 10px",
                 background:"rgba(255,160,50,0.05)", border:"1px solid rgba(255,160,50,0.12)", borderRadius:"6px",
                 fontSize:"11px" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"4px" }}>
-                  <span style={{ color:"#444" }}>🌡 Heat-limited / hop</span>
-                  <span style={{ color: heatRangeLY < 15 ? "#ff6432" : "#ffa032", fontWeight:700 }}>
-                    {heatRangeLY > 0 ? heatRangeLY.toFixed(1) + " LY" : "OVERHEAT"}
+                  <span style={{ color:"#444" }}>🌡 Heat formula / hop</span>
+                  <span style={{ color: heatRangeLY < 1 ? "#555" : heatRangeLY < 15 ? "#ff6432" : "#ffa032" }}>
+                    {heatRangeLY < 0.01 ? "⚠ formula broken for this ship" : heatRangeLY.toFixed(1) + " LY"}
                   </span>
                 </div>
                 <div style={{ display:"flex", justifyContent:"space-between" }}>
@@ -687,24 +857,53 @@ export function MapPanel() {
                   <span style={{ color:"#7fb" }}>{fuelRangeLY.toFixed(0)} LY total</span>
                 </div>
                 <div style={{ display:"flex", justifyContent:"space-between", marginTop:"4px", paddingTop:"4px", borderTop:"1px solid rgba(255,255,255,0.06)" }}>
-                  <span style={{ color:"#333" }}>BFS uses hop limit</span>
-                  <span style={{ color:"#555" }}>{heatRangeLY.toFixed(1)} LY</span>
+                  <span style={{ color:"#555" }}>Active hop limit</span>
+                  <span style={{ color: effectiveRange > 0 ? "#ffa032" : "#ff4444", fontWeight:700 }}>
+                    {effectiveRange > 0 ? effectiveRange.toFixed(1) + " LY" : "— set below"}
+                  </span>
                 </div>
-                {heatRangeLY < 15 && (
-                  <div style={{ color:"#ff6432", fontSize:"10px", marginTop:"4px" }}>
-                    ⚠ Below median NN distance (~34 LY) — route may not exist
-                  </div>
-                )}
+              </div>
+
+              {/* Manual hop range override */}
+              <div style={{ marginBottom:"16px" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"4px" }}>
+                  <label style={labelSx}>MAX HOP RANGE (LY) — override</label>
+                  {manualHopLY && (
+                    <span style={{ color:"#555", fontSize:"10px", cursor:"pointer" }}
+                      onClick={() => setManualHopLY("")}>clear</span>
+                  )}
+                </div>
+                <input type="number" min={1} max={5000}
+                  value={manualHopLY}
+                  onChange={e => setManualHopLY(e.target.value)}
+                  placeholder={heatRangeLY > 0.01 ? heatRangeLY.toFixed(1) : "Enter range (heat formula broken)"}
+                  style={{ ...inputSx, borderColor: manualHopLY ? "rgba(255,160,50,0.5)" : undefined } as React.CSSProperties} />
+                <div style={{ color:"#2a3a1a", fontSize:"10px", marginTop:"3px" }}>
+                  {manualHopLY ? `✓ Using ${effectiveRange.toFixed(1)} LY — reachable halo active` : "Heat constant unconfirmed for heavy ships — set manually"}
+                </div>
               </div>
 
               {/* From */}
               <div style={{ marginBottom:"10px" }}>
-                <label style={labelSx}>FROM</label>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"4px" }}>
+                  <label style={{ ...labelSx, marginBottom:0,
+                    color: activeField === "from" ? "#00ff96" : "#444" }}>FROM
+                    {activeField === "from" && <span style={{ marginLeft:"6px", fontSize:"9px", opacity:0.7 }}>← map click active</span>}
+                  </label>
+                  <span onClick={() => setActiveField("from")}
+                    style={{ fontSize:"10px", color: activeField==="from"?"#00ff96":"#333", cursor:"pointer" }}>
+                    {activeField==="from" ? "✓ active" : "set active"}
+                  </span>
+                </div>
                 <div style={{ position:"relative" }}>
                   <input value={fromQ}
+                    onFocus={() => setActiveField("from")}
                     onChange={e => { setFromQ(e.target.value); setFromRes(search(e.target.value)); }}
-                    placeholder="System name…"
-                    style={{ ...inputSx, borderColor: fromSys ? "rgba(0,255,150,0.35)" : undefined } as React.CSSProperties} />
+                    placeholder="System name… or click map"
+                    style={{ ...inputSx,
+                      borderColor: activeField==="from" ? "rgba(0,255,150,0.5)" : fromSys ? "rgba(0,255,150,0.25)" : undefined,
+                      boxShadow: activeField==="from" ? "0 0 0 1px rgba(0,255,150,0.2)" : undefined,
+                    } as React.CSSProperties} />
                   {fromSys && <span style={{ fontSize:"10px", color:"#00ff96", marginTop:"2px", display:"block" }}>✓ {fromSys.name}</span>}
                   {fromRes.length > 0 && (
                     <div style={{ position:"absolute", top:"100%", left:0, right:0, zIndex:200,
@@ -724,12 +923,25 @@ export function MapPanel() {
 
               {/* To */}
               <div style={{ marginBottom:"16px" }}>
-                <label style={labelSx}>TO</label>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"4px" }}>
+                  <label style={{ ...labelSx, marginBottom:0,
+                    color: activeField === "to" ? "#ff6432" : "#444" }}>TO
+                    {activeField === "to" && <span style={{ marginLeft:"6px", fontSize:"9px", opacity:0.7 }}>← map click active</span>}
+                  </label>
+                  <span onClick={() => setActiveField("to")}
+                    style={{ fontSize:"10px", color: activeField==="to"?"#ff6432":"#333", cursor:"pointer" }}>
+                    {activeField==="to" ? "✓ active" : "set active"}
+                  </span>
+                </div>
                 <div style={{ position:"relative" }}>
                   <input value={toQ}
+                    onFocus={() => setActiveField("to")}
                     onChange={e => { setToQ(e.target.value); setToRes(search(e.target.value)); }}
-                    placeholder="System name…"
-                    style={{ ...inputSx, borderColor: toSys ? "rgba(255,68,68,0.35)" : undefined } as React.CSSProperties} />
+                    placeholder="System name… or click map"
+                    style={{ ...inputSx,
+                      borderColor: activeField==="to" ? "rgba(255,100,50,0.5)" : toSys ? "rgba(255,68,68,0.35)" : undefined,
+                      boxShadow: activeField==="to" ? "0 0 0 1px rgba(255,100,50,0.2)" : undefined,
+                    } as React.CSSProperties} />
                   {toSys && <span style={{ fontSize:"10px", color:"#ff6432", marginTop:"2px", display:"block" }}>✓ {toSys.name}</span>}
                   {toRes.length > 0 && (
                     <div style={{ position:"absolute", top:"100%", left:0, right:0, zIndex:200,
