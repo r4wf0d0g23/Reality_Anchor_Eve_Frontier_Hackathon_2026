@@ -1,0 +1,66 @@
+# Build extension and attach zip to release with a fixed name so
+# https://github.com/evefrontier/evevault/releases/latest/download/eve-vault-chrome.zip
+# always points to the latest build (e.g. for GitBook or docs).
+name: Release extension
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  release-extension:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build extension
+        run: bun run build:ext
+
+      - name: Zip extension
+        run: bun run zip
+        working-directory: apps/extension
+
+      - name: Copy zip to fixed name
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(apps/extension/.output/*-chrome.zip)
+
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "Error: No Chrome ZIP found matching 'apps/extension/.output/*-chrome.zip'."
+            exit 1
+          fi
+
+          if [ "${#files[@]}" -gt 1 ]; then
+            echo "Error: Multiple Chrome ZIPs found matching 'apps/extension/.output/*-chrome.zip':"
+            printf '  %s\n' "${files[@]}"
+            exit 1
+          fi
+
+          cp "${files[0]}" ./eve-vault-chrome.zip
+
+      - name: Upload to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" eve-vault-chrome.zip --clobber
+
+      - name: Upload artifact (manual run)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: eve-vault-chrome
+          path: eve-vault-chrome.zip

@@ -1,0 +1,22 @@
+# Node modules
+*/node_modules
+node_modules/
+
+# Environment variables
+.keys/
+.env
+.env.testnet
+
+# generated keys
+docker/.env.sui
+docker/world-contracts/
+.DS_Store
+
+deployments/*
+test-resources.json
+
+dapps/frontend
+.DS_Store
+
+.pnpm-store/
+move-contracts/**/build/**/

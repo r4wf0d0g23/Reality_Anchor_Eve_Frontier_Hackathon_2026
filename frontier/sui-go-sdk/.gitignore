@@ -1,0 +1,11 @@
+# gen by ide
+.idea
+.vscode
+# log files
+*.log*
+# gen by Makefile
+/build/bin
+*.key
+sui.keystore.fortest
+/vendor/
+.Ds_Store

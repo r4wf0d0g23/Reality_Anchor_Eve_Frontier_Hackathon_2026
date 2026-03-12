@@ -1,0 +1,81 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build artifacts and generated files
+
+# Move build artifacts
+move/*/build/
+**/.sui/
+# Note: Move.lock and pnpm-lock.yaml should be committed
+
+# Circuit compilation artifacts
+src/on-chain/circuits/artifacts/
+src/on-chain/circuits/build/
+src/off-chain/circuits/artifacts/
+src/off-chain/circuits/build/
+*.wasm
+*.zkey
+*.vkey.json
+*.vkey.hex
+*.r1cs
+*.ptau
+
+# Powers of Tau files (large binary files)
+src/shared/ptau/*.ptau
+
+# Rust build artifacts (rust-vkey-serializer is fetched, not committed)
+src/on-chain/tools/rust-vkey-serializer/
+# Rust target directories (build outputs)
+**/target/
+# Note: Cargo.lock files in fetched rust projects are ignored with the directory
+
+# Generated outputs
+outputs/
+logs/
+
+# Test artifacts
+coverage/
+.nyc_output/
+*.log
+*.zst
+
+# Generated test data
+move/world/tests/test_proof_data.move
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Jest cache
+.jest-cache/
+
+# TypeScript build outputs (if any)
+*.tsbuildinfo
+dist/
+build/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+

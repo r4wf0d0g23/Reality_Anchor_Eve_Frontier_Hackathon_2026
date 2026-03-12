@@ -1,0 +1,193 @@
+/* DropdownSelect Container */
+.dropdown-select {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  --menu-height: 0px;
+}
+
+/* When open, ensure dropdown (trigger + menu) stacks above all other content */
+.dropdown-select--open {
+  z-index: 1000;
+}
+
+/* Trigger Button - Outer wrapper with corners */
+.dropdown-select__trigger {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: flex-start;
+  padding: 3px;
+  gap: 0;
+  isolation: isolate;
+  position: relative;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  min-width: 180px;
+  height: 40px;
+
+}
+@media (max-width: 500px) {
+  .dropdown-select__trigger {
+    min-width: auto;
+  }
+}
+
+/* Inner content area */
+.dropdown-select__inner {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 10px 5px 4px;
+  gap: 5px;
+  flex: 1;
+  height: 34px;
+  background: var(--quantum-10);
+  z-index: 0;
+}
+
+/* Avatar and text container */
+.dropdown-select__content {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Text styling */
+.dropdown-select__text {
+  font-family: var(--font-headline, "Headline", "Disket Mono", monospace);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 16px;
+  color: var(--neutral);
+}
+
+/* Arrow Icon - Orange */
+.dropdown-select__arrow {
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s ease;
+  color: var(--quantum);
+}
+
+.dropdown-select__arrow--open {
+  transform: rotate(180deg);
+}
+
+.dropdown-select__arrow svg,
+.dropdown-select__arrow svg path {
+  fill: var(--quantum);
+}
+
+/* Edge lines */
+.dropdown-select__edge {
+  position: absolute;
+  width: 1px;
+  background: var(--neutral-30);
+  z-index: 2;
+  transition: bottom 0.3s ease;
+}
+
+.dropdown-select__edge--left {
+  left: 0;
+  top: 5px;
+  bottom: 5px;
+}
+
+.dropdown-select__edge--right {
+  right: 0;
+  top: 5px;
+  bottom: 5px;
+}
+
+/* When dropdown is open - expand edge lines to wrap menu */
+.dropdown-select--open .dropdown-select__edge--left,
+.dropdown-select--open .dropdown-select__edge--right {
+  bottom: calc(-1 * var(--menu-height) - 2px);
+}
+
+/* Disable height animation on mobile */
+@media (max-width: 500px) {
+  .dropdown-select--open .dropdown-select__edge--left,
+  .dropdown-select--open .dropdown-select__edge--right {
+    bottom: 5px;
+    transition: none;
+  }
+}
+
+/* Dropdown Menu - black overlay with opacity, stacks above other UI to prevent overflow */
+.dropdown-select__menu {
+  position: absolute;
+  top: 100%;
+  left: 1px;
+  right: 1px;
+  width: auto;
+  background: rgba(0, 0, 0, 0.92);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+}
+
+/* Match trigger width on narrow viewports (extension popup, mobile) so each item covers full line */
+@media (max-width: 500px) {
+  .dropdown-select__menu {
+    left: 1px;
+    right: 1px;
+    min-width: 220px;
+    width: auto;
+  }
+}
+
+/* Menu Item */
+.dropdown-select__item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  text-decoration: none;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.dropdown-select__item:hover {
+  background: var(--quantum-20);
+}
+
+/* Item text styling */
+.dropdown-select__item-text {
+  font-family: "Disket Mono", monospace;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 16px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--neutral);
+  transition: color 0.15s ease;
+}
+
+.dropdown-select__item:hover .dropdown-select__item-text,
+.dropdown-select__item:hover .text {
+  color: var(--quantum);
+}
+
+/* Icon in menu items - scaled down to 11x11 */
+.dropdown-select__item svg {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+}
