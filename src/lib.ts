@@ -270,16 +270,18 @@ export type PlayerStructure = {
   ownerCapId: string;
   kind: StructureKind;
   typeFull: string;
-  label: string;
+  label: string;        // kind label (e.g. "Network Node")
+  displayName: string;  // metadata.name if set, else label
   isOnline: boolean;
   locationHash: string;
+  solarSystemId?: number;
   energySourceId?: string;
   fuelLevelPct?: number;
   runtimeHoursRemaining?: number;
 };
 
 export type LocationGroup = {
-  locationHash: string;
+  key: string;               // solarSystemId as string, or "unknown"
   solarSystemId?: number;
   tabLabel: string;
   structures: PlayerStructure[];
@@ -318,45 +320,57 @@ async function findCharacterForWallet(walletAddress: string): Promise<string | n
   return null;
 }
 
-async function resolveLocationName(
-  locationHash: string,
-  structureIds: string[],
-): Promise<{ solarSystemId?: number; tabLabel: string }> {
-  for (const structureId of structureIds) {
-    try {
-      const res = await fetch(SUI_TESTNET_RPC, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0", id: 1,
-          method: "suix_queryEvents",
-          params: [{ MoveEventField: { path: "/assembly_id", value: structureId } }, null, 1, false],
-        }),
-      });
-      const json = await res.json() as { result?: { data: Array<{ parsedJson?: { solarsystem?: string | number } }> } };
-      const events = json.result?.data ?? [];
-      if (events.length > 0) {
-        const solarSystemId = Number(events[0].parsedJson?.solarsystem);
-        if (solarSystemId && !isNaN(solarSystemId)) {
-          try {
-            const nameRes = await fetch(`/intel/system/${solarSystemId}`);
-            if (nameRes.ok) {
-              const nameJson = await nameRes.json() as { name?: string };
-              if (nameJson.name) return { solarSystemId, tabLabel: nameJson.name };
-            }
-          } catch { /* fallback */ }
-          return { solarSystemId, tabLabel: `System ${solarSystemId}` };
-        }
+/** Fetch all LocationRevealedEvents and return a map: assemblyId -> solarSystemId */
+async function buildLocationEventMap(): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  let cursor: string | null = null;
+  do {
+    const res = await fetch(SUI_TESTNET_RPC, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0", id: 1,
+        method: "suix_queryEvents",
+        params: [
+          { MoveEventType: `${WORLD_PKG}::location::LocationRevealedEvent` },
+          cursor, 100, false,
+        ],
+      }),
+    });
+    const json = await res.json() as {
+      result: {
+        data: Array<{ parsedJson: { assembly_id: string; solarsystem: string | number } }>;
+        hasNextPage: boolean;
+        nextCursor: string | null;
+      };
+    };
+    for (const e of json.result.data) {
+      const sysId = Number(e.parsedJson.solarsystem);
+      if (e.parsedJson.assembly_id && sysId && !isNaN(sysId)) {
+        map.set(e.parsedJson.assembly_id, sysId);
       }
-    } catch { /* try next */ }
-  }
-  return { tabLabel: `0x${locationHash.slice(0, 8)}` };
+    }
+    cursor = json.result.hasNextPage ? json.result.nextCursor : null;
+  } while (cursor);
+  return map;
+}
+
+async function resolveSystemName(solarSystemId: number): Promise<string> {
+  try {
+    const res = await fetch(`/intel/system/${solarSystemId}`);
+    if (res.ok) {
+      const json = await res.json() as { name?: string };
+      if (json.name) return json.name;
+    }
+  } catch { /* fallback */ }
+  return `System ${solarSystemId}`;
 }
 
 export async function fetchPlayerStructures(walletAddress: string): Promise<LocationGroup[]> {
   const characterId = await findCharacterForWallet(walletAddress);
   if (!characterId) return [];
 
+  // Discover all OwnerCaps
   const capEntries: Array<{ capId: string; structureId: string; kind: StructureKind; typeFull: string; label: string }> = [];
   await Promise.all(
     STRUCTURE_TYPES.map(async ({ type: structType, kind, label }) => {
@@ -368,49 +382,77 @@ export async function fetchPlayerStructures(walletAddress: string): Promise<Loca
       }
     })
   );
-
   if (!capEntries.length) return [];
 
-  const structures: PlayerStructure[] = await Promise.all(
-    capEntries.map(async ({ capId, structureId, kind, typeFull, label }) => {
-      const fields = await rpcGetObject(structureId);
-      const locFields = asRecord(readPath(fields, "location", "fields")) ?? {};
-      const locationHashBytes = (locFields["location_hash"] as number[] | undefined) ?? [];
-      const locationHash = locationHashBytes.map((b: number) => b.toString(16).padStart(2, "0")).join("");
-      const statusVariant = readPath(fields, "status", "fields", "status", "variant");
-      const isOnline = statusVariant === "ONLINE";
-      const esRaw = fields["energy_source_id"];
-      const energySourceId = typeof esRaw === "string" ? esRaw : undefined;
+  // Fetch location events + structure objects in parallel
+  const [locationMap, structureObjects] = await Promise.all([
+    buildLocationEventMap(),
+    Promise.all(
+      capEntries.map(async ({ capId, structureId, kind, typeFull, label }) => {
+        const fields = await rpcGetObject(structureId);
 
-      let fuelLevelPct: number | undefined;
-      let runtimeHoursRemaining: number | undefined;
-      if (kind === "NetworkNode") {
-        const fuelFields = asRecord(readPath(fields, "fuel", "fields")) ?? {};
-        const qty = numish(fuelFields["quantity"]) ?? 0;
-        const uv = numish(fuelFields["unit_volume"]) ?? 28;
-        const mc = numish(fuelFields["max_capacity"]) ?? 100000;
-        const br = numish(fuelFields["burn_rate_in_ms"]) ?? 3600000;
-        fuelLevelPct = mc > 0 ? (qty * uv / mc) * 100 : 0;
-        runtimeHoursRemaining = qty * br / 3_600_000;
-      }
+        // Location hash
+        const locFields = asRecord(readPath(fields, "location", "fields")) ?? {};
+        const locationHashBytes = (locFields["location_hash"] as number[] | undefined) ?? [];
+        const locationHash = locationHashBytes.map((b: number) => b.toString(16).padStart(2, "0")).join("");
 
-      return { objectId: structureId, ownerCapId: capId, kind, typeFull, label, isOnline, locationHash, energySourceId, fuelLevelPct, runtimeHoursRemaining };
-    })
-  );
+        // Status
+        const statusVariant = readPath(fields, "status", "fields", "status", "variant");
+        const isOnline = statusVariant === "ONLINE";
 
-  const groups = new Map<string, PlayerStructure[]>();
+        // Connected NetworkNode
+        const esRaw = fields["energy_source_id"];
+        const energySourceId = typeof esRaw === "string" ? esRaw : undefined;
+
+        // Display name: metadata.name if set, else kind label
+        const metaName = stringish(readPath(fields, "metadata", "fields", "name")).trim();
+        const displayName = metaName || label;
+
+        // Fuel (NetworkNode only)
+        let fuelLevelPct: number | undefined;
+        let runtimeHoursRemaining: number | undefined;
+        if (kind === "NetworkNode") {
+          const fuelFields = asRecord(readPath(fields, "fuel", "fields")) ?? {};
+          const qty = numish(fuelFields["quantity"]) ?? 0;
+          const uv = numish(fuelFields["unit_volume"]) ?? 28;
+          const mc = numish(fuelFields["max_capacity"]) ?? 100000;
+          const br = numish(fuelFields["burn_rate_in_ms"]) ?? 3600000;
+          fuelLevelPct = mc > 0 ? (qty * uv / mc) * 100 : 0;
+          runtimeHoursRemaining = qty * br / 3_600_000;
+        }
+
+        return { objectId: structureId, ownerCapId: capId, kind, typeFull, label, displayName, isOnline, locationHash, energySourceId, fuelLevelPct, runtimeHoursRemaining } as PlayerStructure;
+      })
+    ),
+  ]);
+
+  // Attach solarSystemId from event map
+  const structures = structureObjects.map(s => ({
+    ...s,
+    solarSystemId: locationMap.get(s.objectId),
+  }));
+
+  // Group by solarSystemId (resolved) or "unknown" (all unresolved together)
+  const groups = new Map<string, { solarSystemId?: number; structs: PlayerStructure[] }>();
   for (const s of structures) {
-    if (!groups.has(s.locationHash)) groups.set(s.locationHash, []);
-    groups.get(s.locationHash)!.push(s);
+    const key = s.solarSystemId ? String(s.solarSystemId) : "unknown";
+    if (!groups.has(key)) groups.set(key, { solarSystemId: s.solarSystemId, structs: [] });
+    groups.get(key)!.structs.push(s);
   }
 
+  // Resolve tab labels
   const result: LocationGroup[] = await Promise.all(
-    Array.from(groups.entries()).map(async ([locationHash, structs]) => {
-      const { solarSystemId, tabLabel } = await resolveLocationName(locationHash, structs.map(s => s.objectId));
-      return { locationHash, solarSystemId, tabLabel, structures: structs };
+    Array.from(groups.entries()).map(async ([key, { solarSystemId, structs }]) => {
+      let tabLabel = "Your Structures";
+      if (solarSystemId) {
+        tabLabel = await resolveSystemName(solarSystemId);
+      }
+      return { key, solarSystemId, tabLabel, structures: structs };
     })
   );
 
+  // Sort: resolved systems first, unknown last
+  result.sort((a, b) => (a.key === "unknown" ? 1 : 0) - (b.key === "unknown" ? 1 : 0));
   return result;
 }
 

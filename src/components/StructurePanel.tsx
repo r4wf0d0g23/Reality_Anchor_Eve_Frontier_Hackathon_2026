@@ -94,7 +94,7 @@ function StructureRow({
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
         <span style={{ fontSize: "18px" }}>{KIND_ICON[structure.kind] ?? "⚙️"}</span>
-        <span style={{ color: "#ffa032", fontWeight: 600, minWidth: "110px" }}>{structure.label}</span>
+        <span style={{ color: "#ffa032", fontWeight: 600, minWidth: "110px" }}>{structure.displayName}</span>
         <StatusBadge isOnline={structure.isOnline} />
 
         {structure.kind === "NetworkNode" && structure.fuelLevelPct !== undefined && (
@@ -211,7 +211,7 @@ export function StructurePanel({ onTxSuccess }: Props) {
       <div style={{ display: "flex", gap: "4px", marginBottom: "16px", flexWrap: "wrap" }}>
         {groups.map((group, idx) => (
           <button
-            key={group.locationHash}
+            key={group.key}
             onClick={() => setActiveTab(idx)}
             style={{
               padding: "6px 16px",
