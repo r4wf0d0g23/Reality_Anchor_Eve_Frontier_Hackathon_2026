@@ -5,7 +5,7 @@ import { CorpOverview } from "./components/CorpOverview";
 import { NodeDashboard } from "./components/NodeDashboard";
 
 function App() {
-  const { handleConnect, handleDisconnect } = useConnection();
+  const { handleConnect, handleDisconnect, hasEveVault, isConnected } = useConnection();
   const account = useCurrentAccount();
   const [lastDigest, setLastDigest] = useState<string | undefined>();
 
@@ -23,12 +23,23 @@ function App() {
             <span className="stat-label">Wallet</span>
             <strong>{account ? abbreviateAddress(account.address) : "DISCONNECTED"}</strong>
           </div>
-          <button
-            className="accent-button"
-            onClick={() => (account ? handleDisconnect() : handleConnect())}
-          >
-            {account ? "Disconnect" : "Connect Slush / Sui Wallet"}
-          </button>
+          {!hasEveVault && !isConnected ? (
+            <a
+              className="accent-button"
+              href="https://github.com/evefrontier/evevault/releases/latest/download/eve-vault-chrome.zip"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Install EVE Vault
+            </a>
+          ) : (
+            <button
+              className="accent-button"
+              onClick={() => (isConnected ? handleDisconnect() : handleConnect())}
+            >
+              {isConnected ? "Disconnect" : "Connect EVE Vault"}
+            </button>
+          )}
         </div>
       </header>
 
