@@ -145,21 +145,22 @@ export function StructurePanel({ onTxSuccess }: Props) {
     queryKey: ["playerStructures", account?.address],
     queryFn: async () => {
       if (!account?.address) return [];
-      // Fetch character ID for this wallet (needed for borrow_owner_cap)
+      const groups = await fetchPlayerStructures(account.address);
+      // Extract character ID from the first structure's ownerCap chain (via lib internals),
+      // but since fetchPlayerStructures resolves it internally, query CharacterCreatedEvent here too.
       const res = await fetch("https://fullnode.testnet.sui.io:443", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           jsonrpc: "2.0", id: 1,
-          method: "suix_getOwnedObjects",
-          params: [account.address, { filter: { StructType: "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75::character::Character" }, options: { showType: true } }, null, 1],
+          method: "suix_queryEvents",
+          params: [{ MoveEventType: "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75::character::CharacterCreatedEvent" }, null, 50, false],
         }),
       });
-      const charJson = await res.json() as { result: { data: Array<{ data: { objectId: string } }> } };
-      const charId = charJson.result.data[0]?.data.objectId ?? null;
-      setCharacterId(charId);
-      if (!charId) return [];
-      return fetchPlayerStructures(account.address);
+      const j = await res.json() as { result: { data: Array<{ parsedJson: { character_address: string; character_id: string } }> } };
+      const match = j.result.data.find(e => e.parsedJson.character_address.toLowerCase() === account.address.toLowerCase());
+      setCharacterId(match?.parsedJson.character_id ?? null);
+      return groups;
     },
     enabled: !!account?.address,
     staleTime: 30_000,

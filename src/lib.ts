@@ -10,7 +10,6 @@ import {
   RAW_NODE_OWNER_CAP,
   SUI_TESTNET_RPC,
   WORLD_PKG,
-  CHARACTER_TYPE,
   STRUCTURE_TYPES,
   type StructureKind,
 } from "./constants";
@@ -94,14 +93,7 @@ function numish(value: unknown): number | null {
   return null;
 }
 
-function boolish(value: unknown): boolean | null {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "string") {
-    if (value.toLowerCase() === "true") return true;
-    if (value.toLowerCase() === "false") return false;
-  }
-  return null;
-}
+
 
 function stringish(value: unknown): string {
   if (typeof value === "string") return value;
@@ -294,8 +286,36 @@ export type LocationGroup = {
 };
 
 async function findCharacterForWallet(walletAddress: string): Promise<string | null> {
-  const res = await rpcGetOwnedObjects(walletAddress, CHARACTER_TYPE, 1);
-  return res[0]?.objectId ?? null;
+  // Character is a Shared object — can't find via getOwnedObjects.
+  // Query CharacterCreatedEvent, paginate all pages, match character_address.
+  let cursor: string | null = null;
+  do {
+    const res = await fetch(SUI_TESTNET_RPC, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0", id: 1,
+        method: "suix_queryEvents",
+        params: [
+          { MoveEventType: `${WORLD_PKG}::character::CharacterCreatedEvent` },
+          cursor, 50, false,
+        ],
+      }),
+    });
+    const json = await res.json() as {
+      result: {
+        data: Array<{ parsedJson: { character_address: string; character_id: string } }>;
+        hasNextPage: boolean;
+        nextCursor: string | null;
+      }
+    };
+    const match = json.result.data.find(
+      e => e.parsedJson.character_address.toLowerCase() === walletAddress.toLowerCase()
+    );
+    if (match) return match.parsedJson.character_id;
+    cursor = json.result.hasNextPage ? json.result.nextCursor : null;
+  } while (cursor);
+  return null;
 }
 
 async function resolveLocationName(
