@@ -2,10 +2,12 @@ import { Transaction } from "@mysten/sui/transactions";
 import {
   CLOCK,
   CRADLEOS_PKG,
+  FUEL_CONFIG,
   NETWORK_NODE_TYPE,
   RAW_CHARACTER_ID,
   RAW_NETWORK_NODE_ID,
   RAW_NODE_OWNER_CAP,
+  SUI_TESTNET_RPC,
   WORLD_PKG,
 } from "./constants";
 
@@ -28,9 +30,40 @@ export type CorpOverviewData = {
 };
 
 type CoreLikeClient = {
-  getObject: (options: unknown) => Promise<unknown>;
-  listOwnedObjects: (options: unknown) => Promise<unknown>;
+  getObject: (options: { objectId: string; include?: Record<string, boolean> }) => Promise<{ object: { objectId: string; type: string; owner?: unknown; json?: Record<string, unknown> | null } }>;
+  listOwnedObjects: (options: { owner: string; type?: string; include?: Record<string, boolean>; limit?: number }) => Promise<{ objects: Array<{ objectId: string; type?: string; json?: Record<string, unknown> | null }> }>;
 };
+
+async function rpcGetObject(objectId: string): Promise<Record<string, unknown>> {
+  const res = await fetch(SUI_TESTNET_RPC, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0", id: 1,
+      method: "sui_getObject",
+      params: [objectId, { showContent: true, showType: true, showOwner: true }],
+    }),
+  });
+  const json = await res.json() as { result: { data: { content: { fields: Record<string, unknown> }; type: string; owner: unknown } } };
+  return { ...json.result.data.content.fields, _type: json.result.data.type, _owner: json.result.data.owner };
+}
+
+async function rpcGetOwnedObjects(owner: string, typeFilter: string): Promise<Array<{ objectId: string; fields: Record<string, unknown> }>> {
+  const res = await fetch(SUI_TESTNET_RPC, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0", id: 1,
+      method: "suix_getOwnedObjects",
+      params: [owner, { filter: { StructType: typeFilter }, options: { showContent: true, showType: true } }, null, 1],
+    }),
+  });
+  const json = await res.json() as { result: { data: Array<{ data: { objectId: string; content: { fields: Record<string, unknown> } } }> } };
+  return (json.result.data ?? []).map(item => ({
+    objectId: item.data.objectId,
+    fields: item.data.content?.fields ?? {},
+  }));
+}
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -73,60 +106,31 @@ function stringish(value: unknown): string {
 }
 
 function extractNodeMetrics(fields: Record<string, unknown>): NodeDashboardData {
-  const onlineCandidates = [
-    readPath(fields, "online"),
-    readPath(fields, "is_online"),
-    readPath(fields, "status", "online"),
-    readPath(fields, "status"),
-    readPath(fields, "state"),
-  ];
-  const onlineRaw = onlineCandidates.find((v) => v !== undefined);
-  const isOnline =
-    boolish(onlineRaw) ??
-    (typeof onlineRaw === "string"
-      ? ["online", "active", "running"].includes(onlineRaw.toLowerCase())
-      : false);
+  // Status: fields.status.fields.status.variant = "ONLINE" | "OFFLINE"
+  const statusVariant = readPath(fields, "status", "fields", "status", "variant");
+  const isOnline = statusVariant === "ONLINE";
 
-  const fuelCurrent =
-    numish(readPath(fields, "fuel")) ??
-    numish(readPath(fields, "fuel_level")) ??
-    numish(readPath(fields, "fuel_current")) ??
-    numish(readPath(fields, "fuelRemaining")) ??
-    0;
-  const fuelMax =
-    numish(readPath(fields, "fuel_capacity")) ??
-    numish(readPath(fields, "max_fuel")) ??
-    numish(readPath(fields, "fuel_max")) ??
-    100;
-  const fuelLevelPct =
-    fuelCurrent <= 1 && fuelMax <= 1
-      ? Math.max(0, Math.min(100, fuelCurrent * 100))
-      : fuelMax > 0
-        ? Math.max(0, Math.min(100, (fuelCurrent / fuelMax) * 100))
-        : Math.max(0, Math.min(100, fuelCurrent));
+  // Fuel: fields.fuel.fields.{quantity, max_capacity, unit_volume, burn_rate_in_ms}
+  const fuelFields = asRecord(readPath(fields, "fuel", "fields")) ?? {};
+  const quantity = numish(fuelFields["quantity"]) ?? 0;           // items
+  const unitVolume = numish(fuelFields["unit_volume"]) ?? 28;     // cu per item
+  const maxCapacity = numish(fuelFields["max_capacity"]) ?? 100000; // cu
+  const burnRateMs = numish(fuelFields["burn_rate_in_ms"]) ?? 3600000; // ms per item
 
-  const runtimeMs =
-    numish(readPath(fields, "runtime_remaining_ms")) ??
-    numish(readPath(fields, "remaining_runtime_ms")) ??
-    null;
-  const runtimeSeconds =
-    numish(readPath(fields, "runtime_remaining_secs")) ??
-    numish(readPath(fields, "runtime_remaining_s")) ??
-    numish(readPath(fields, "remaining_runtime_secs")) ??
-    null;
-  const runtimeHours =
-    numish(readPath(fields, "runtime_remaining_hours")) ??
-    numish(readPath(fields, "remaining_runtime_hours")) ??
-    (runtimeMs !== null ? runtimeMs / (1000 * 60 * 60) : null) ??
-    (runtimeSeconds !== null ? runtimeSeconds / 3600 : null) ??
-    0;
+  const fuelVolume = quantity * unitVolume;
+  const fuelLevelPct = maxCapacity > 0
+    ? Math.max(0, Math.min(100, (fuelVolume / maxCapacity) * 100))
+    : 0;
+
+  // Runtime: quantity items × burn_rate_in_ms per item → hours
+  const runtimeHours = (quantity * burnRateMs) / (1000 * 60 * 60);
 
   return {
     objectId: RAW_NETWORK_NODE_ID,
-    objectType: stringish(readPath(fields, "type")) || NETWORK_NODE_TYPE,
+    objectType: stringish(readPath(fields, "_type")) || NETWORK_NODE_TYPE,
     isOnline,
     fuelLevelPct: Number(fuelLevelPct.toFixed(1)),
-    runtimeHoursRemaining: Number(runtimeHours.toFixed(2)),
+    runtimeHoursRemaining: Number(runtimeHours.toFixed(1)),
     raw: fields,
   };
 }
@@ -161,32 +165,18 @@ function extractCorpMetrics(fields: Record<string, unknown>, objectId: string): 
   };
 }
 
-export async function fetchNodeDashboard(client: CoreLikeClient): Promise<NodeDashboardData> {
-  const response = await client.getObject({
-    id: RAW_NETWORK_NODE_ID,
-    include: { content: true, type: true, owner: true },
-  });
-
-  const fields = asRecord(readPath(response, "data", "content", "fields")) ?? {};
-  return extractNodeMetrics({
-    ...fields,
-    type: readPath(response, "data", "type"),
-    owner: readPath(response, "data", "owner"),
-  });
+export async function fetchNodeDashboard(_client: CoreLikeClient): Promise<NodeDashboardData> {
+  const fields = await rpcGetObject(RAW_NETWORK_NODE_ID);
+  return extractNodeMetrics(fields);
 }
 
-export async function fetchCorpOverview(client: CoreLikeClient): Promise<CorpOverviewData | null> {
-  const owned = await client.listOwnedObjects({
-    owner: RAW_CHARACTER_ID,
-    filter: { objectType: `${CRADLEOS_PKG}::corp_registry::CorpRegistry` },
-    include: { content: true, type: true },
-    limit: 1,
-  });
-
-  const hit = readPath(owned, "data", "0");
-  const objectId = readPath(hit, "objectId");
-  const fields = asRecord(readPath(hit, "content", "fields"));
-  if (typeof objectId !== "string" || !fields) return null;
+export async function fetchCorpOverview(_client: CoreLikeClient): Promise<CorpOverviewData | null> {
+  const results = await rpcGetOwnedObjects(
+    RAW_CHARACTER_ID,
+    `${CRADLEOS_PKG}::corp_registry::CorpRegistry`,
+  );
+  if (!results.length) return null;
+  const { objectId, fields } = results[0];
   return extractCorpMetrics(fields, objectId);
 }
 
@@ -202,6 +192,34 @@ export function buildBringOnlineTransaction() {
   tx.moveCall({
     target: `${WORLD_PKG}::network_node::online`,
     arguments: [tx.object(RAW_NETWORK_NODE_ID), cap, tx.object(CLOCK)],
+  });
+
+  tx.moveCall({
+    target: `${WORLD_PKG}::character::return_owner_cap`,
+    typeArguments: [NETWORK_NODE_TYPE],
+    arguments: [tx.object(RAW_CHARACTER_ID), cap, receipt],
+  });
+
+  return tx;
+}
+
+export function buildBringOfflineTransaction() {
+  const tx = new Transaction();
+
+  const [cap, receipt] = tx.moveCall({
+    target: `${WORLD_PKG}::character::borrow_owner_cap`,
+    typeArguments: [NETWORK_NODE_TYPE],
+    arguments: [tx.object(RAW_CHARACTER_ID), tx.object(RAW_NODE_OWNER_CAP)],
+  });
+
+  const [offlineAssemblies] = tx.moveCall({
+    target: `${WORLD_PKG}::network_node::offline`,
+    arguments: [tx.object(RAW_NETWORK_NODE_ID), tx.object(FUEL_CONFIG), cap, tx.object(CLOCK)],
+  });
+
+  tx.moveCall({
+    target: `${WORLD_PKG}::network_node::destroy_offline_assemblies`,
+    arguments: [offlineAssemblies],
   });
 
   tx.moveCall({

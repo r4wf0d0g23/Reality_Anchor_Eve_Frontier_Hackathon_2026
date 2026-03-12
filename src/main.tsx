@@ -1,5 +1,18 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+
+// crypto.randomUUID is only available in secure contexts (HTTPS/localhost).
+// The EVE Vault injected.js calls it during wallet connect — polyfill for LAN/http.
+if (typeof crypto.randomUUID !== "function") {
+  (crypto as any).randomUUID = (): string => {
+    const b = crypto.getRandomValues(new Uint8Array(16));
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    return [...b].map((v, i) =>
+      ([4,6,8,10].includes(i) ? "-" : "") + v.toString(16).padStart(2,"0")
+    ).join("");
+  };
+}
 import "./main.css";
 import "@radix-ui/themes/styles.css";
 
@@ -7,13 +20,9 @@ import { QueryClient } from "@tanstack/react-query";
 import App from "./App";
 import { EveFrontierProvider } from "@evefrontier/dapp-kit";
 import { Theme } from "@radix-ui/themes";
-import { registerSlushWallet } from "@mysten/slush-wallet";
 
-// Register EVE Vault as a popup wallet using the same DappPostMessageChannel
-// protocol as Slush — EVE Vault is built on the same Mysten stack and supports it.
-registerSlushWallet("EVE Vault", {
-  origin: "https://test.evevault.evefrontier.com",
-});
+// EVE Vault v0.0.5 registers itself via Wallet Standard through its content script.
+// No manual registration needed — useWallets() picks it up automatically.
 
 const queryClient = new QueryClient();
 

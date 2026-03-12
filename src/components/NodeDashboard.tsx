@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useCurrentAccount, useCurrentClient, useDAppKit } from "@mysten/dapp-kit-react";
 import { CurrentAccountSigner } from "@mysten/dapp-kit-core";
 import { RAW_NETWORK_NODE_ID } from "../constants";
-import { buildBringOnlineTransaction, fetchNodeDashboard } from "../lib";
+import { buildBringOnlineTransaction, buildBringOfflineTransaction, fetchNodeDashboard } from "../lib";
 
 type Props = {
   onTxSuccess?: (digest?: string) => void;
@@ -26,14 +26,19 @@ export function NodeDashboard({ onTxSuccess }: Props) {
   }, [data]);
 
   const handleBringOnline = async () => {
-    if (!account) {
-      throw new Error("No connected wallet available for signing.");
-    }
-
+    if (!account) throw new Error("No connected wallet available for signing.");
     const tx = buildBringOnlineTransaction();
     const signer = new CurrentAccountSigner(dAppKit);
     const result = await signer.signAndExecuteTransaction({ transaction: tx });
+    onTxSuccess?.(readDigest(result));
+    await refetch();
+  };
 
+  const handleBringOffline = async () => {
+    if (!account) throw new Error("No connected wallet available for signing.");
+    const tx = buildBringOfflineTransaction();
+    const signer = new CurrentAccountSigner(dAppKit);
+    const result = await signer.signAndExecuteTransaction({ transaction: tx });
     onTxSuccess?.(readDigest(result));
     await refetch();
   };
@@ -78,9 +83,14 @@ export function NodeDashboard({ onTxSuccess }: Props) {
         <p className="muted-text">
           Sends a programmable transaction to the connected wallet: borrow owner cap → online(node, cap, clock) → return owner cap.
         </p>
-        <button className="accent-button" onClick={handleBringOnline} disabled={!account}>
-          {!account ? "Connect Wallet to Continue" : "Bring Online"}
-        </button>
+        <div style={{ display: "flex", gap: "8px" }}>
+          <button className="accent-button" onClick={handleBringOnline} disabled={!account || data?.isOnline}>
+            {!account ? "Connect Wallet to Continue" : "Bring Online"}
+          </button>
+          <button className="ghost-button" onClick={handleBringOffline} disabled={!account || !data?.isOnline}>
+            Bring Offline
+          </button>
+        </div>
       </div>
     </section>
   );

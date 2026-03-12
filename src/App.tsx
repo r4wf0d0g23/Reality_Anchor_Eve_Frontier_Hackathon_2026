@@ -1,13 +1,29 @@
 import { useState } from "react";
 import { abbreviateAddress, useConnection } from "@evefrontier/dapp-kit";
-import { useCurrentAccount } from "@mysten/dapp-kit-react";
+import { useCurrentAccount, useWallets, useDAppKit } from "@mysten/dapp-kit-react";
 import { CorpOverview } from "./components/CorpOverview";
 import { NodeDashboard } from "./components/NodeDashboard";
 
 function App() {
-  const { handleConnect, handleDisconnect, hasEveVault, isConnected } = useConnection();
+  const { handleDisconnect, hasEveVault, isConnected } = useConnection();
   const account = useCurrentAccount();
+  const wallets = useWallets();
+  const dAppKit = useDAppKit();
   const [lastDigest, setLastDigest] = useState<string | undefined>();
+  const [connectError, setConnectError] = useState<string | undefined>();
+
+  const handleConnect = async () => {
+    const wallet = wallets.find(w => w.name.includes("Eve Vault")) || wallets[0];
+    if (!wallet) { setConnectError("No wallet found"); return; }
+    setConnectError(undefined);
+    try {
+      const result = await dAppKit.connectWallet({ wallet });
+      console.log("[CradleOS] connect result:", result);
+    } catch (err: any) {
+      console.error("[CradleOS] connect error:", err);
+      setConnectError(err?.message || String(err));
+    }
+  };
 
   return (
     <main className="app-shell">
@@ -18,6 +34,10 @@ function App() {
           <p className="muted-text">Network node activation, corp telemetry, wallet-signed actions only.</p>
         </div>
 
+        <div style={{fontSize:'11px',opacity:0.6,fontFamily:'monospace',marginBottom:'4px'}}>
+          wallets: [{wallets.map(w=>w.name).join(', ')||'none'}] | hasEveVault: {String(hasEveVault)} | connected: {String(isConnected)}
+          {connectError && <span style={{color:'#ff6b6b',marginLeft:'8px'}}>ERR: {connectError}</span>}
+        </div>
         <div className="wallet-cluster">
           <div className="wallet-readout">
             <span className="stat-label">Wallet</span>
@@ -26,7 +46,7 @@ function App() {
           {!hasEveVault && !isConnected ? (
             <a
               className="accent-button"
-              href="https://github.com/evefrontier/evevault/releases/latest/download/eve-vault-chrome.zip"
+              href="https://github.com/evefrontier/evevault/releases/download/v0.0.5/eve-vault-chrome-v0.0.5.zip"
               target="_blank"
               rel="noreferrer"
             >
