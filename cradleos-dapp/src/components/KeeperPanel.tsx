@@ -458,7 +458,11 @@ async function loadKeeperContext(walletAddress: string): Promise<KeeperContext> 
       const groups = await fetchPlayerStructures(walletAddress);
       const allStructures = groups.flatMap(g => g.structures);
       base.keeperNodeActive = allStructures.some(
-        s => s.kind === "NetworkNode" && s.isOnline && s.metadataUrl?.includes("keeper.reapers.shop")
+        s => s.kind === "NetworkNode" && s.isOnline && (
+          s.metadataUrl?.includes("keeper.reapers.shop") ||
+          s.metadataUrl?.includes("r4wf0d0g23.github.io/CradleOS/#/keeper") ||
+          s.metadataUrl?.includes("r4wf0d0g23.github.io/Reality_Anchor_Eve_Frontier_Hackathon_2026/#/keeper")
+        )
       );
       base.structures = allStructures.map(s => ({
         kind: s.kind,
